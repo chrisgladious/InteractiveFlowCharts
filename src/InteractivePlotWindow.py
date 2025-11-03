@@ -320,7 +320,7 @@ if __name__ == "__main__":
     # df = pd.read_excel(excel_file_path, index_col='DateTime', parse_dates=True)
 
     # Path to your Excel file
-    excel_file_path = r'c:\Users\secn17444\OneDrive - WSP O365\Projekt\Växjö\5142-10347420\PST\Arbetsmaterial\Flöden till Örsled PST och regn\Örsled_2021-10-19_-_2021-10_23_version_2_CNI_bara rådata.xlsm'
+    excel_file_path = r'c:\Users\chrini\Documents\Projekt\Örsled PST\Flöden till Örsled PST och regn\Örsled_2021-10-19_-_2021-10_23_version_2_CNI_bara rådata.xlsm'  #Tidigare: c:\Users\secn17444\OneDrive - WSP O365\Projekt\Växjö\5142-10347420\PST\Arbetsmaterial\Flöden till Örsled PST och regn\Örsled_2021-10-19_-_2021-10_23_version_2_CNI_bara rådata.xlsm'
 
     # Read the Excel file
     df_axL = pd.read_excel(excel_file_path)
