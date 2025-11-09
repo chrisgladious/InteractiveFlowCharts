@@ -35,6 +35,10 @@ def _split_settings_filename_key(filename: str):
         return base, (key if key else None)
     return filename, None
 
+def _is_legacy_flat_settings(data):
+    """Detect if the settings dict is in legacy flat format (not keyed)."""
+    return isinstance(data, dict) and 'axLxlim' in data and 'axLylim' in data
+
 def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
     """Save settings to JSON.
     If filename contains '::KEY', store under that KEY inside a shared JSON file.
@@ -47,6 +51,9 @@ def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
     for k, v in (settings or {}).items():
         if k == 'series_visible':
             cleaned_settings[k] = [1 if x else 0 for x in v]
+        elif k == 'auto_update':
+            # Store auto_update as boolean (1 or 0 integer)
+            cleaned_settings[k] = 1 if v else 0
         elif isinstance(v, (list, tuple)):
             try:
                 cleaned_settings[k] = [float(x) for x in v]
@@ -72,7 +79,7 @@ def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
         data_to_write = cleaned_settings
     else:
         # Ensure mapping format { key: settings }
-        if isinstance(existing, dict) and 'axLxlim' in existing and 'axLylim' in existing:
+        if _is_legacy_flat_settings(existing):
             # Convert legacy flat content into a mapping under a default key
             existing = {'default': existing}
         elif not isinstance(existing, dict):
@@ -103,7 +110,7 @@ def load_plot_settings(filename='InteractivePlotWindow.json'):
                 data['series_visible'] = [bool(x) for x in data['series_visible']]
             return data
         # Key requested: ensure mapping
-        if isinstance(data, dict) and 'axLxlim' in data and 'axLylim' in data:
+        if _is_legacy_flat_settings(data):
             # Legacy flat file but a key was requested; no keyed profile exists yet
             return None
         if isinstance(data, dict) and key in data:
@@ -338,6 +345,10 @@ class InteractivePlotWindow(QMainWindow):
         # Dark mode state
         self.dark_mode = False
 
+        # Toggle button states (True = next click will check all, False = next click will uncheck all)
+        self.toggle_left_state = True  # Start with "check all" behavior
+        self.toggle_right_state = True
+
         # Create central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -354,8 +365,25 @@ class InteractivePlotWindow(QMainWindow):
         right_cols = list(self.df_axR.columns) if (self.df_axR is not None and not self.df_axR.empty) else []
         all_cols = left_cols + right_cols
 
+        # Generate color palette for all series (same as used in plot())
+        import matplotlib.pyplot as plt
+        total_series = len(all_cols)
+        
+        if total_series <= 9:
+            self.series_colors = [plt.cm.Set1(i) for i in range(total_series)]
+        elif total_series <= 17:
+            self.series_colors = [plt.cm.Set1(i % 9) for i in range(9)] + [plt.cm.Dark2(i % 8) for i in range(total_series - 9)]
+        else:
+            self.series_colors = ([plt.cm.Set1(i % 9) for i in range(9)] + 
+                     [plt.cm.Dark2(i % 8) for i in range(8)] +
+                     [plt.cm.tab10(i % 10) for i in range(max(0, total_series - 17))])
+
         # Try to load saved settings before setting up visibility and checkboxes
         self.saved_settings = load_plot_settings(self.settings_file)
+        
+        # Restore auto_update state from settings if available
+        if self.saved_settings and 'auto_update' in self.saved_settings:
+            self.auto_update = bool(self.saved_settings['auto_update'])
         
         # Set up initial visibility state
         if self.saved_settings and 'series_visible' in self.saved_settings and len(self.saved_settings['series_visible']) == len(all_cols):
@@ -383,19 +411,27 @@ class InteractivePlotWindow(QMainWindow):
         # Add auto-update toggle and manual update button at the top
         control_layout = QHBoxLayout()
         self.auto_update_checkbox = QCheckBox("Auto-update chart")
-        self.auto_update_checkbox.setChecked(True)
+        self.auto_update_checkbox.setChecked(self.auto_update)  # Use the restored value
         self.auto_update_checkbox.stateChanged.connect(self.toggle_auto_update)
         control_layout.addWidget(self.auto_update_checkbox)
         
         self.manual_update_btn = QPushButton("Update Chart")
         self.manual_update_btn.clicked.connect(self.manual_update_chart)
-        self.manual_update_btn.setEnabled(False)  # Initially disabled since auto-update is on
+        self.manual_update_btn.setEnabled(not self.auto_update)  # Set based on restored value
         control_layout.addWidget(self.manual_update_btn)
         
         self.dark_mode_btn = QPushButton("Dark Mode")
         self.dark_mode_btn.setCheckable(True)
         self.dark_mode_btn.clicked.connect(self.toggle_dark_mode)
         control_layout.addWidget(self.dark_mode_btn)
+        
+        self.uncheck_all_left_btn = QPushButton("Toggle All Left")
+        self.uncheck_all_left_btn.clicked.connect(self.uncheck_all_left)
+        control_layout.addWidget(self.uncheck_all_left_btn)
+        
+        self.uncheck_all_right_btn = QPushButton("Toggle All Right")
+        self.uncheck_all_right_btn.clicked.connect(self.uncheck_all_right)
+        control_layout.addWidget(self.uncheck_all_right_btn)
         
         control_layout.addStretch()
         
@@ -405,12 +441,23 @@ class InteractivePlotWindow(QMainWindow):
 
         # Build checkboxes below the chart with left and right sections in framed boxes
         from PyQt6.QtWidgets import QGridLayout, QFrame
+        from calculate_button_text_metrics import calculate_optimal_rows
+        import math
         
         # Create horizontal layout for left and right framed sections
         series_layout = QHBoxLayout()
-        
-        # Number of columns per row in the grid
-        num_cols_per_row = 8
+
+        # Calculate optimal number of rows for each side based on button text lengths (min 2 for symmetry)
+        num_rows_left = calculate_optimal_rows(left_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
+        num_rows_right = calculate_optimal_rows(right_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
+        # Keep both sides visually aligned: use the maximum of the two as the unified row count
+        unified_rows = max(num_rows_left, num_rows_right)
+        num_rows_left = unified_rows
+        num_rows_right = unified_rows
+
+        # Calculate number of columns needed for each side
+        num_cols_left = math.ceil(len(left_cols) / num_rows_left) if len(left_cols) > 0 else 0
+        num_cols_right = math.ceil(len(right_cols) / num_rows_right) if len(right_cols) > 0 else 0
         
         # LEFT AXIS SECTION (Blue frame)
         if len(left_cols) > 0:
@@ -428,27 +475,54 @@ class InteractivePlotWindow(QMainWindow):
             left_layout.setContentsMargins(5, 5, 5, 5)
             
             for i, col in enumerate(left_cols):
-                row = i // num_cols_per_row
-                col_pos = i % num_cols_per_row
+                row = i % num_rows_left  # Use modulo to cycle through rows
+                col_pos = i // num_rows_left  # Divide to get column position
                 checkbox = QCheckBox(f"{col}")
-                checkbox.setStyleSheet("""
-                    QCheckBox { 
+                
+                # Get series color and convert to hex
+                series_color_hex = self._rgba_to_hex(self.series_colors[i])
+                
+                checkbox.setStyleSheet(f"""
+                    QCheckBox {{ 
                         background-color: transparent; 
                         color: #003366;
                         spacing: 5px;
-                    }
-                    QCheckBox::indicator {
+                    }}
+                    QCheckBox::indicator {{
                         width: 13px;
                         height: 13px;
-                        border: 2px solid #003366;
+                        border: 2px solid {series_color_hex};
                         border-radius: 3px;
                         background-color: white;
-                    }
-                    QCheckBox::indicator:checked {
-                        background-color: #0066cc;
-                        border: 2px solid #003366;
-                    }
+                    }}
+                    QCheckBox::indicator:checked {{
+                        background-color: {series_color_hex};
+                        border: 2px solid {series_color_hex};
+                    }}
                 """)
+                # Tooltip with basic info and stats (when numeric)
+                try:
+                    s = self.df_axL[col]
+                    tip_lines = [f"{col}", "Axis: Left"]
+                    if pd.api.types.is_numeric_dtype(s):
+                        nn = int(s.count())
+                        s_valid = s.dropna()
+                        if not s_valid.empty:
+                            s_min = s_valid.min()
+                            s_max = s_valid.max()
+                            tip_lines += [
+                                f"Non-null: {nn:,}",
+                                f"Min: {s_min:.6g}",
+                                f"Max: {s_max:.6g}"
+                            ]
+                        else:
+                            tip_lines += [f"Non-null: {nn:,}"]
+                    else:
+                        tip_lines += [f"Type: {str(s.dtype)}", f"Non-null: {int(s.count()):,}"]
+                    checkbox.setToolTip("\n".join(tip_lines))
+                except Exception:
+                    # Fallback simple tooltip
+                    checkbox.setToolTip(f"{col} (Left axis)")
                 checkbox.blockSignals(True)
                 checkbox.setChecked(bool(self.series_visible[i]))
                 checkbox.blockSignals(False)
@@ -458,7 +532,8 @@ class InteractivePlotWindow(QMainWindow):
             
             # Set size policy to minimize vertical expansion
             left_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-            series_layout.addWidget(left_frame)
+            # Add with stretch factor based on number of columns needed
+            series_layout.addWidget(left_frame, stretch=num_cols_left)
         
         # RIGHT AXIS SECTION (Orange frame)
         if len(right_cols) > 0:
@@ -476,27 +551,55 @@ class InteractivePlotWindow(QMainWindow):
             right_layout.setContentsMargins(5, 5, 5, 5)
             
             for i, col in enumerate(right_cols):
-                row = i // num_cols_per_row
-                col_pos = i % num_cols_per_row
+                row = i % num_rows_right  # Use modulo to cycle through rows
+                col_pos = i // num_rows_right  # Divide to get column position
                 checkbox = QCheckBox(f"{col}")
-                checkbox.setStyleSheet("""
-                    QCheckBox { 
+                
+                # Get series color and convert to hex (offset by left columns)
+                series_idx = len(left_cols) + i
+                series_color_hex = self._rgba_to_hex(self.series_colors[series_idx])
+                
+                checkbox.setStyleSheet(f"""
+                    QCheckBox {{ 
                         background-color: transparent; 
                         color: #663300;
                         spacing: 5px;
-                    }
-                    QCheckBox::indicator {
+                    }}
+                    QCheckBox::indicator {{
                         width: 13px;
                         height: 13px;
-                        border: 2px solid #663300;
+                        border: 2px solid {series_color_hex};
                         border-radius: 3px;
                         background-color: white;
-                    }
-                    QCheckBox::indicator:checked {
-                        background-color: #cc6600;
-                        border: 2px solid #663300;
-                    }
+                    }}
+                    QCheckBox::indicator:checked {{
+                        background-color: {series_color_hex};
+                        border: 2px solid {series_color_hex};
+                    }}
                 """)
+                # Tooltip with basic info and stats (when numeric)
+                try:
+                    s = self.df_axR[col]
+                    tip_lines = [f"{col}", "Axis: Right"]
+                    if pd.api.types.is_numeric_dtype(s):
+                        nn = int(s.count())
+                        s_valid = s.dropna()
+                        if not s_valid.empty:
+                            s_min = s_valid.min()
+                            s_max = s_valid.max()
+                            tip_lines += [
+                                f"Non-null: {nn:,}",
+                                f"Min: {s_min:.6g}",
+                                f"Max: {s_max:.6g}"
+                            ]
+                        else:
+                            tip_lines += [f"Non-null: {nn:,}"]
+                    else:
+                        tip_lines += [f"Type: {str(s.dtype)}", f"Non-null: {int(s.count()):,}"]
+                    checkbox.setToolTip("\n".join(tip_lines))
+                except Exception:
+                    # Fallback simple tooltip
+                    checkbox.setToolTip(f"{col} (Right axis)")
                 checkbox.blockSignals(True)
                 checkbox.setChecked(bool(self.series_visible[len(left_cols) + i]))
                 checkbox.blockSignals(False)
@@ -506,7 +609,8 @@ class InteractivePlotWindow(QMainWindow):
             
             # Set size policy to minimize vertical expansion
             right_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-            series_layout.addWidget(right_frame)
+            # Add with stretch factor based on number of columns needed
+            series_layout.addWidget(right_frame, stretch=num_cols_right)
 
         layout.addLayout(series_layout)
         
@@ -537,7 +641,8 @@ class InteractivePlotWindow(QMainWindow):
         settings = {
             'axLxlim': list(self.axL.get_xlim()),
             'axLylim': list(self.axL.get_ylim()),
-            'series_visible': self.series_visible
+            'series_visible': self.series_visible,
+            'auto_update': self.auto_update
         }
         
         if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
@@ -547,6 +652,13 @@ class InteractivePlotWindow(QMainWindow):
             })
             
         save_plot_settings(settings, self.settings_file)
+
+    def _rgba_to_hex(self, rgba_tuple):
+        """Convert matplotlib RGBA tuple (0-1 range) to hex color string."""
+        r = int(rgba_tuple[0] * 255)
+        g = int(rgba_tuple[1] * 255)
+        b = int(rgba_tuple[2] * 255)
+        return f'#{r:02x}{g:02x}{b:02x}'
 
     def create_toggle_function(self, index):
         # Accept the state argument from stateChanged signal and set the visibility directly.
@@ -563,11 +675,53 @@ class InteractivePlotWindow(QMainWindow):
         """Toggle auto-update mode for series visibility changes."""
         self.auto_update = bool(state)
         self.manual_update_btn.setEnabled(not self.auto_update)
+        self.save_current_settings()  # Save the state immediately
         
     def manual_update_chart(self):
         """Manually trigger chart update when auto-update is disabled."""
         self.plot()
         self.save_current_settings()
+
+    def uncheck_all_left(self):
+        """Alternate between checking all and unchecking all left axis series."""
+        num_left = len(self.df_axL.columns)
+        # Determine the new state based on current toggle state
+        new_state = self.toggle_left_state
+        
+        for i in range(num_left):
+            self.series_visible[i] = new_state
+            if i < len(self.checkboxes):
+                self.checkboxes[i].blockSignals(True)
+                self.checkboxes[i].setChecked(new_state)
+                self.checkboxes[i].blockSignals(False)
+        
+        # Flip the state for next time
+        self.toggle_left_state = not self.toggle_left_state
+        
+        if self.auto_update:
+            self.plot()
+            self.save_current_settings()
+    
+    def uncheck_all_right(self):
+        """Alternate between checking all and unchecking all right axis series."""
+        num_left = len(self.df_axL.columns)
+        num_right = len(self.df_axR.columns) if (self.df_axR is not None and not self.df_axR.empty) else 0
+        # Determine the new state based on current toggle state
+        new_state = self.toggle_right_state
+        
+        for i in range(num_left, num_left + num_right):
+            self.series_visible[i] = new_state
+            if i < len(self.checkboxes):
+                self.checkboxes[i].blockSignals(True)
+                self.checkboxes[i].setChecked(new_state)
+                self.checkboxes[i].blockSignals(False)
+        
+        # Flip the state for next time
+        self.toggle_right_state = not self.toggle_right_state
+        
+        if self.auto_update:
+            self.plot()
+            self.save_current_settings()
 
     def toggle_dark_mode(self):
         """Toggle between light and dark mode for the chart."""

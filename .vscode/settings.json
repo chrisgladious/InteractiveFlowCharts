@@ -3,5 +3,5 @@
     "notebook.lineNumbers": "on",
     "notebook.outline.showCodeCells": true,
     "notebook.breadcrumbs.showCodeCells": true,
-    "jupyter.enableCellCodeLens": true
+    "jupyter.interactiveWindow.codeLens.enable": true
 }
