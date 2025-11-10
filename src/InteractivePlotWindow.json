@@ -430,12 +430,12 @@
     },
     "Flöden och Flödesdiff (24 series)": {
         "axLxlim": [
-            20395.493511662367,
-            20397.298441308834
+            20343.86742592824,
+            20359.77557743785
         ],
         "axLylim": [
             -3.440608413445645,
-            66.52549617042786
+            170.0
         ],
         "auto_update": 1,
         "series_formats": [
@@ -448,7 +448,7 @@
             },
             {
                 "series_name": "Inflöde FT-10101_MA_1h",
-                "visible": 1,
+                "visible": 0,
                 "linestyle": "",
                 "marker": ".",
                 "markersize": 3
@@ -609,12 +609,12 @@
             }
         ],
         "axRxlim": [
-            20395.493511662367,
-            20397.298441308834
+            20343.86742592824,
+            20359.77557743785
         ],
         "axRylim": [
             -0.8,
-            0.3
+            0.4
         ]
     },
     "Kumsumflöden in och ut (24 series)": {
@@ -770,28 +770,28 @@
             },
             {
                 "series_name": "Inflöde FT-10101_[m3]]",
-                "visible": 1,
+                "visible": 0,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
             },
             {
                 "series_name": "Inflöde Extenslam FT80101_[m3]",
-                "visible": 1,
+                "visible": 0,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
             },
             {
                 "series_name": "Utflöde FT-72101_[m3]",
-                "visible": 1,
+                "visible": 0,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
             },
             {
                 "series_name": "MBBRflöde FT30101_[m3]",
-                "visible": 1,
+                "visible": 0,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
@@ -801,7 +801,7 @@
                 "visible": 1,
                 "linestyle": "-",
                 "marker": "",
-                "markersize": 3
+                "markersize": 5
             },
             {
                 "series_name": "Inflow_[m3]",
@@ -1081,18 +1081,18 @@
     },
     "Hastighet FT-10101 och Flödesdiff (8 series)": {
         "axLxlim": [
-            20009.698472222222,
-            20415.09736111111
+            20391.186801140648,
+            20391.594301655947
         ],
         "axLylim": [
-            -0.0370210081741365,
-            0.7774398489024505
+            0.0,
+            0.7983205538884784
         ],
         "auto_update": 0,
         "series_formats": [
             {
                 "series_name": "Inflöde FT-10101 [m/s]",
-                "visible": 0,
+                "visible": 1,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
@@ -1127,33 +1127,33 @@
             },
             {
                 "series_name": "Diff_MA_1h",
-                "visible": 0,
+                "visible": 1,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
             },
             {
                 "series_name": "Diff_MA_24h",
-                "visible": 0,
+                "visible": 1,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
             },
             {
                 "series_name": "Diff_MA_7d",
-                "visible": 0,
+                "visible": 1,
                 "linestyle": "-",
                 "marker": "",
                 "markersize": 3
             }
         ],
         "axRxlim": [
-            20009.698472222222,
-            20415.09736111111
+            20391.186801140648,
+            20391.594301655947
         ],
         "axRylim": [
-            -5756809.0173150385,
-            4969559.702384448
+            -0.8458158594633767,
+            0.5200661396783748
         ]
     },
     "Flöden och Flödesdiff (26 series)": {
@@ -1372,12 +1372,12 @@
     },
     "Nivå_Bräddning_LT23101 (2 series)": {
         "axLxlim": [
-            20009.698472222222,
-            20415.09736111111
+            20277.864720618847,
+            20321.83007582936
         ],
         "axLylim": [
-            -0.021643971502780857,
-            0.39272172957658774
+            -0.007255740059005422,
+            0.6389021697140771
         ],
         "auto_update": 1,
         "series_formats": [
@@ -1393,6 +1393,139 @@
                 "visible": 1,
                 "linestyle": "",
                 "marker": ".",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20277.864720618847,
+            20321.83007582936
+        ],
+        "axRylim": [
+            -0.3748549100172269,
+            54.09753470636215
+        ]
+    },
+    "Nivå_Bräddning_LT23101 (3 series)": {
+        "axLxlim": [
+            20028.125694444443,
+            20396.67013888889
+        ],
+        "axLylim": [
+            -0.0038095493222724333,
+            0.36968968621754467
+        ],
+        "auto_update": 0,
+        "series_formats": [
+            {
+                "series_name": "Nivå Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 2
+            },
+            {
+                "series_name": "Tröskelnivå_LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": ".",
+                "markersize": 2
+            }
+        ],
+        "axRxlim": [
+            20028.125694444443,
+            20396.67013888889
+        ],
+        "axRylim": [
+            0.12497457773164555,
+            74.26002783536734
+        ]
+    },
+    "Nivå_Bräddning_LT23101 (4 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            -0.021643971502780857,
+            0.39272172957658774
+        ],
+        "auto_update": 1,
+        "series_formats": [
+            {
+                "series_name": "Nivå Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "H_threshold",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Tröskelnivå_LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axRylim": [
+            -17.54764091476967,
+            368.500459210163
+        ]
+    },
+    "Flöden och Flödesdiff (3 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            -0.021643971502780857,
+            0.39272172957658774
+        ],
+        "auto_update": 1,
+        "series_formats": [
+            {
+                "series_name": "Nivå Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Tröskelnivå Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
                 "markersize": 3
             }
         ],

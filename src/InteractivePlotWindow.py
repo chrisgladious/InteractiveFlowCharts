@@ -284,9 +284,11 @@ class CustomNavigationToolbar(NavigationToolbar2QT):
                 self.manual_xaxis_btn.setChecked(False)
                 return
         else:
+            # Switching back to Auto mode
             self.plot_window.manual_xaxis = False
             self.plot_window.manual_xaxis_mode = None
             self.manual_xaxis_btn.setText("Manual X-Axis")
+            self.manual_xaxis_btn.setChecked(False)  # Ensure button is unchecked
             self.modeLabel.setText("Mode: Auto")
         self.plot_window.reformatXAxis()
         self.plot_window.canvas.draw()
@@ -413,6 +415,9 @@ class InteractivePlotWindow(QMainWindow):
 
         # Dark mode state
         self.dark_mode = False
+        
+        # Crosshair enabled state
+        self.crosshair_enabled = False
 
         # Toggle button states (True = next click will check all, False = next click will uncheck all)
         self.toggle_left_state = True  # Start with "check all" behavior
@@ -537,6 +542,12 @@ class InteractivePlotWindow(QMainWindow):
         self.uncheck_all_right_btn = QPushButton("Toggle All Right")
         self.uncheck_all_right_btn.clicked.connect(self.uncheck_all_right)
         control_layout.addWidget(self.uncheck_all_right_btn)
+        
+        self.crosshair_btn = QPushButton("Crosshair")
+        self.crosshair_btn.setCheckable(True)
+        self.crosshair_btn.setChecked(False)
+        self.crosshair_btn.clicked.connect(self.toggle_crosshair)
+        control_layout.addWidget(self.crosshair_btn)
         
         control_layout.addStretch()
         
@@ -874,6 +885,27 @@ class InteractivePlotWindow(QMainWindow):
             self.plot()
             self.save_current_settings()
 
+    def toggle_crosshair(self):
+        """Toggle crosshair on/off."""
+        self.crosshair_enabled = self.crosshair_btn.isChecked()
+        
+        # If disabling, clear any existing crosshair
+        if not self.crosshair_enabled:
+            self.clear_crosshair()
+    
+    def clear_crosshair(self):
+        """Remove crosshair lines from the plot."""
+        if self.crosshair_vline is not None:
+            self.crosshair_vline.remove()
+            self.crosshair_vline = None
+        if self.crosshair_hline is not None:
+            self.crosshair_hline.remove()
+            self.crosshair_hline = None
+        if self.crosshair_hline_right is not None:
+            self.crosshair_hline_right.remove()
+            self.crosshair_hline_right = None
+        self.canvas.draw_idle()
+
     def toggle_dark_mode(self):
         """Toggle between light and dark mode for the chart."""
         self.dark_mode = self.dark_mode_btn.isChecked()
@@ -933,7 +965,7 @@ class InteractivePlotWindow(QMainWindow):
 
     def on_mouse_press(self, event):
         """Handle mouse button press - start drawing crosshair."""
-        if event.inaxes in [self.axL, self.axR] and event.xdata is not None and event.ydata is not None:
+        if self.crosshair_enabled and event.inaxes in [self.axL, self.axR] and event.xdata is not None and event.ydata is not None:
             self.mouse_pressed = True
             self.update_crosshair(event)
 
@@ -943,7 +975,7 @@ class InteractivePlotWindow(QMainWindow):
 
     def on_mouse_move(self, event):
         """Update crosshair position when mouse moves while button is pressed."""
-        if self.mouse_pressed and event.inaxes in [self.axL, self.axR]:
+        if self.crosshair_enabled and self.mouse_pressed and event.inaxes in [self.axL, self.axR]:
             self.update_crosshair(event)
 
     def update_crosshair(self, event):
@@ -1421,10 +1453,22 @@ class InteractivePlotWindow(QMainWindow):
             self.axR = self.apply_xaxis_formatting(self.axR)
 
     def resetXAxis(self):
-        """Reset X-axis to show all data."""
-        self.axL.autoscale(axis='x')
-        if self.axR:
-            self.axR.autoscale(axis='x')
+        """Reset X-axis to show all data with tight bounds (no margins)."""
+        # Get the actual data range from the dataframe
+        if self.df_axL is not None and not self.df_axL.empty:
+            x_min = mdates.date2num(self.df_axL.index.min())
+            x_max = mdates.date2num(self.df_axL.index.max())
+            
+            # Set tight limits with no margin
+            self.axL.set_xlim(x_min, x_max)
+            if self.axR:
+                self.axR.set_xlim(x_min, x_max)
+        else:
+            # Fallback to autoscale if no data
+            self.axL.autoscale(axis='x')
+            if self.axR:
+                self.axR.autoscale(axis='x')
+        
         self.reformatXAxis()
         self.canvas.draw()
         if hasattr(self, 'toolbar'):
