@@ -1,4 +1,4 @@
-{
+﻿{
     "default": {
         "axLxlim": [
             20009.698472222222,
@@ -38,7 +38,7 @@
             6.260511544398149
         ]
     },
-    "Fl\u00f6den och Fl\u00f6desdiff": {
+    "Flöden och Flödesdiff": {
         "axLxlim": [
             20009.698472222222,
             20415.09736111111
@@ -82,7 +82,7 @@
             0.3
         ]
     },
-    "Hastighet FT-10101 och Fl\u00f6desdiff": {
+    "Hastighet FT-10101 och Flödesdiff": {
         "axLxlim": [
             20009.698472222222,
             20415.09736111111
@@ -111,7 +111,7 @@
             0.3
         ]
     },
-    "Fl\u00f6den och Fl\u00f6desdiff (19 series)": {
+    "Flöden och Flödesdiff (19 series)": {
         "axLxlim": [
             20009.698472222222,
             20415.09736111111
@@ -151,7 +151,7 @@
             0.4934652793909775
         ]
     },
-    "Hastighet FT-10101 och Fl\u00f6desdiff (7 series)": {
+    "Hastighet FT-10101 och Flödesdiff (7 series)": {
         "axLxlim": [
             20009.698472222222,
             20415.09736111111
@@ -179,7 +179,7 @@
             0.3
         ]
     },
-    "Fl\u00f6den och Fl\u00f6desdiff laggkomp (19 series)": {
+    "Flöden och Flödesdiff laggkomp (19 series)": {
         "axLxlim": [
             20009.698472222222,
             20415.09736111111
@@ -226,7 +226,7 @@
             0.5904651212174064
         ]
     },
-    "Kumsumfl\u00f6den in och ut (19 series)": {
+    "Kumsumflöden in och ut (19 series)": {
         "axLxlim": [
             20009.698472222222,
             20415.09736111111
@@ -271,7 +271,7 @@
             28.18236729925106
         ]
     },
-    "Fl\u00f6den och Fl\u00f6desdiff (23 series)": {
+    "Flöden och Flödesdiff (23 series)": {
         "axLxlim": [
             20300.347268584068,
             20333.072608832408
@@ -315,7 +315,7 @@
             0.2964689459186596
         ]
     },
-    "Fl\u00f6den och Fl\u00f6desdiff (39 series)": {
+    "Flöden och Flödesdiff (39 series)": {
         "axLxlim": [
             20387.934040598633,
             20392.676083474555
@@ -373,6 +373,1036 @@
         "axRylim": [
             -86.98739925179932,
             -73.85236450130888
+        ]
+    },
+    "Flöden och Flödesdiff (32 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            -9.456201071896679,
+            197.83603532103174
+        ],
+        "series_visible": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        "auto_update": 0,
+        "axRxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axRylim": [
+            -575375.9048245322,
+            5672464.975933594
+        ]
+    },
+    "Flöden och Flödesdiff (24 series)": {
+        "axLxlim": [
+            20395.493511662367,
+            20397.298441308834
+        ],
+        "axLylim": [
+            -3.440608413445645,
+            66.52549617042786
+        ],
+        "auto_update": 1,
+        "series_formats": [
+            {
+                "series_name": "Inflöde FT-10101",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_1h",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_24h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_7d",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_1h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_24h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_7d",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_1h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_24h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_7d",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_1h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_24h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_7d",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_1h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_24h",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_7d",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_1min",
+                "visible": 0,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_1h",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_24h",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_7d",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20395.493511662367,
+            20397.298441308834
+        ],
+        "axRylim": [
+            -0.8,
+            0.3
+        ]
+    },
+    "Kumsumflöden in och ut (24 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            0.0,
+            197.83603455603173
+        ],
+        "auto_update": 0,
+        "series_formats": [
+            {
+                "series_name": "Inflöde FT-10101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_[m3]]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_[m3]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_[m3]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_[m3]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_[m3]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflow_[m3]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Outflow_[m3]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Storage_Change_[m3]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Storage_Change_Percent",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axRylim": [
+            0.0,
+            20382686.04271034
+        ]
+    },
+    "Flöden och Flödesdiff laggkomp (24 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            -9.45618500689668,
+            197.83603455603173
+        ],
+        "auto_update": 0,
+        "series_formats": [
+            {
+                "series_name": "Inflöde FT-10101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT-72101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_1min",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_Raw",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_MAofRaw_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_MAofRaw_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_MAofRaw_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_RatioOfMAs_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_RatioOfMAs_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_Lag_RatioOfMAs_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axRylim": [
+            -5756809.0173150385,
+            4969559.702384448
+        ]
+    },
+    "Hastighet FT-10101 och Flödesdiff (8 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            -0.0370210081741365,
+            0.7774398489024505
+        ],
+        "auto_update": 0,
+        "series_formats": [
+            {
+                "series_name": "Inflöde FT-10101 [m/s]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101 [m/s]_MA_1h",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101 [m/s]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT-10101 [m/s]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_1min",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axRylim": [
+            -5756809.0173150385,
+            4969559.702384448
+        ]
+    },
+    "Flöden och Flödesdiff (26 series)": {
+        "axLxlim": [
+            20198.0389260869,
+            20235.20337229335
+        ],
+        "axLylim": [
+            -9.456201071896679,
+            197.4288825469897
+        ],
+        "series_visible": [
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        "auto_update": 0,
+        "series_formats": [
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20198.0389260869,
+            20235.20337229335
+        ],
+        "axRylim": [
+            -575375.9048245322,
+            5660193.287467886
+        ]
+    },
+    "Nivå_Bräddning_LT23101 (1 series)": {
+        "axLxlim": [
+            20266.47728849725,
+            20281.85875077479
+        ],
+        "axLylim": [
+            -0.021643971502780857,
+            0.39242431084773705
+        ],
+        "auto_update": 1,
+        "series_formats": [
+            {
+                "series_name": "Nivå Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20266.47728849725,
+            20281.85875077479
+        ],
+        "axRylim": [
+            -1.5878112744626023,
+            33.31896377670616
+        ]
+    },
+    "Nivå_Bräddning_LT23101 (2 series)": {
+        "axLxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axLylim": [
+            -0.021643971502780857,
+            0.39272172957658774
+        ],
+        "auto_update": 1,
+        "series_formats": [
+            {
+                "series_name": "Nivå Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101",
+                "visible": 1,
+                "linestyle": "",
+                "marker": ".",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20009.698472222222,
+            20415.09736111111
+        ],
+        "axRylim": [
+            -1.5878112744626023,
+            33.34403676371464
         ]
     }
 }

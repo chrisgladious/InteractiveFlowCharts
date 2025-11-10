@@ -69,7 +69,7 @@ def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
     existing = {}
     if os.path.exists(base_file):
         try:
-            with open(base_file, 'r') as f:
+            with open(base_file, 'r', encoding='utf-8-sig') as f:
                 existing = json.load(f)
         except Exception:
             existing = {}
@@ -88,8 +88,8 @@ def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
         data_to_write = existing
     
     try:
-        with open(base_file, 'w', newline='\r\n') as f:
-            json.dump(data_to_write, f, indent=4, separators=(',', ': '))
+        with open(base_file, 'w', newline='\r\n', encoding='utf-8-sig') as f:
+            json.dump(data_to_write, f, indent=4, separators=(',', ': '), ensure_ascii=False)
         print(f"Saved plot settings to {base_file}{('::' + key) if key else ''}")
     except Exception as e:
         print(f"Warning: could not save plot settings to {base_file}: {e}")
@@ -101,7 +101,7 @@ def load_plot_settings(filename='InteractivePlotWindow.json'):
     """
     base_file, key = _split_settings_filename_key(filename)
     try:
-        with open(base_file, 'r') as f:
+        with open(base_file, 'r', encoding='utf-8-sig') as f:
             data = json.load(f)
         # If no key requested, accept flat or return as-is
         if key is None:
@@ -154,6 +154,75 @@ class ManualXAxisDialog(QDialog):
 
     def get_mode(self):
         return self.combo.currentText()
+
+class SeriesFormatDialog(QDialog):
+    """Dialog for configuring series line style, marker, and marker size."""
+    def __init__(self, parent=None, series_name="", current_format=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Format Series: {series_name}")
+        
+        # Default values
+        if current_format is None:
+            current_format = {'linestyle': '-', 'marker': '', 'markersize': 3}
+        
+        layout = QVBoxLayout(self)
+        
+        # Line style selection
+        layout.addWidget(QLabel("Line Style:"))
+        self.linestyle_combo = QComboBox(self)
+        self.linestyle_combo.addItems([
+            "Solid (-)",
+            "Dashed (--)",
+            "Dash-dot (-.)",
+            "Dotted (:)",
+            "None"
+        ])
+        linestyle_map = {'-': 0, '--': 1, '-.': 2, ':': 3, '': 4}
+        self.linestyle_combo.setCurrentIndex(linestyle_map.get(current_format.get('linestyle', '-'), 0))
+        layout.addWidget(self.linestyle_combo)
+        
+        # Marker selection
+        layout.addWidget(QLabel("Marker:"))
+        self.marker_combo = QComboBox(self)
+        self.marker_combo.addItems([
+            "None",
+            "Circle (o)",
+            "Square (s)",
+            "Triangle (^)",
+            "Diamond (D)",
+            "Plus (+)",
+            "Cross (x)",
+            "Star (*)",
+            "Point (.)"
+        ])
+        marker_map = {'': 0, 'o': 1, 's': 2, '^': 3, 'D': 4, '+': 5, 'x': 6, '*': 7, '.': 8}
+        self.marker_combo.setCurrentIndex(marker_map.get(current_format.get('marker', ''), 0))
+        layout.addWidget(self.marker_combo)
+        
+        # Marker size
+        from PyQt6.QtWidgets import QSpinBox
+        layout.addWidget(QLabel("Marker Size:"))
+        self.markersize_spin = QSpinBox(self)
+        self.markersize_spin.setRange(1, 20)
+        self.markersize_spin.setValue(int(current_format.get('markersize', 3)))
+        layout.addWidget(self.markersize_spin)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+    
+    def get_format(self):
+        """Return selected format as dict."""
+        linestyle_values = ['-', '--', '-.', ':', '']
+        marker_values = ['', 'o', 's', '^', 'D', '+', 'x', '*', '.']
+        
+        return {
+            'linestyle': linestyle_values[self.linestyle_combo.currentIndex()],
+            'marker': marker_values[self.marker_combo.currentIndex()],
+            'markersize': self.markersize_spin.value()
+        }
 
 class CustomNavigationToolbar(NavigationToolbar2QT):
     def __init__(self, canvas, parent=None, plot_window = None):
@@ -385,25 +454,61 @@ class InteractivePlotWindow(QMainWindow):
         if self.saved_settings and 'auto_update' in self.saved_settings:
             self.auto_update = bool(self.saved_settings['auto_update'])
         
-        # Set up initial visibility state
-        if self.saved_settings and 'series_visible' in self.saved_settings and len(self.saved_settings['series_visible']) == len(all_cols):
-            # Use saved visibility if available and matches column count
-            self.series_visible = [bool(x) for x in self.saved_settings['series_visible']]
-        else:
-            # Fall back to initial_visible parameter
-            if initial_visible is None:
-                self.series_visible = [True] * len(all_cols)
-            elif isinstance(initial_visible, (list, tuple)) and len(initial_visible) == len(all_cols):
-                # Convert numeric 1/0 or booleans to booleans
-                self.series_visible = [bool(x) for x in initial_visible]
+        # Initialize series formatting and visibility with robust name-based matching
+        # Default format: line with no markers
+        default_format = {'linestyle': '-', 'marker': '', 'markersize': 3}
+
+        saved_formats_list = None
+        if isinstance(self.saved_settings, dict):
+            saved_formats_list = self.saved_settings.get('series_formats', None)
+
+        # Build name->format map if possible
+        saved_by_name = {}
+        if isinstance(saved_formats_list, list):
+            for item in saved_formats_list:
+                if isinstance(item, dict) and 'series_name' in item:
+                    saved_by_name[item['series_name']] = item
+
+        # Prepare containers
+        self.series_formats = []
+        self.series_visible = []
+
+        for i, col in enumerate(all_cols):
+            # Pick saved entry by name, else by index if lengths match, else None
+            saved_entry = None
+            if col in saved_by_name:
+                saved_entry = saved_by_name[col]
+            elif isinstance(saved_formats_list, list) and i < len(saved_formats_list):
+                saved_entry = saved_formats_list[i]
+
+            # Visibility: prefer per-entry 'visible', else old 'series_visible', else True
+            if isinstance(saved_entry, dict) and 'visible' in saved_entry:
+                self.series_visible.append(bool(saved_entry.get('visible', 1)))
+            elif isinstance(self.saved_settings, dict) and isinstance(self.saved_settings.get('series_visible'), list) and i < len(self.saved_settings['series_visible']):
+                self.series_visible.append(bool(self.saved_settings['series_visible'][i]))
             else:
-                # Treat initial_visible as list of column names to show
-                try:
-                    visible_set = set(initial_visible)
-                    self.series_visible = [ (col in visible_set) for col in all_cols ]
-                except Exception:
-                    # fallback to all True
-                    self.series_visible = [True] * len(all_cols)
+                # Fall back to initial_visible parameter
+                if initial_visible is None:
+                    self.series_visible.append(True)
+                elif isinstance(initial_visible, (list, tuple)) and i < len(initial_visible):
+                    self.series_visible.append(bool(initial_visible[i]))
+                else:
+                    try:
+                        visible_set = set(initial_visible)
+                        self.series_visible.append(col in visible_set)
+                    except Exception:
+                        self.series_visible.append(True)
+
+            # Format: compose from saved or default
+            if isinstance(saved_entry, dict):
+                clean_fmt = {
+                    'linestyle': saved_entry.get('linestyle', default_format['linestyle']),
+                    'marker': saved_entry.get('marker', default_format['marker']),
+                    'markersize': int(saved_entry.get('markersize', default_format['markersize'])),
+                }
+                self.series_formats.append(clean_fmt)
+            else:
+                self.series_formats.append(default_format.copy())
 
         # Initialize checkboxes list
         self.checkboxes = []
@@ -527,6 +632,8 @@ class InteractivePlotWindow(QMainWindow):
                 checkbox.setChecked(bool(self.series_visible[i]))
                 checkbox.blockSignals(False)
                 checkbox.stateChanged.connect(self.create_toggle_function(i))
+                checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                checkbox.customContextMenuRequested.connect(self.create_format_menu(i, col))
                 left_layout.addWidget(checkbox, row, col_pos)
                 self.checkboxes.append(checkbox)
             
@@ -604,6 +711,8 @@ class InteractivePlotWindow(QMainWindow):
                 checkbox.setChecked(bool(self.series_visible[len(left_cols) + i]))
                 checkbox.blockSignals(False)
                 checkbox.stateChanged.connect(self.create_toggle_function(len(left_cols) + i))
+                checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                checkbox.customContextMenuRequested.connect(self.create_format_menu(len(left_cols) + i, col))
                 right_layout.addWidget(checkbox, row, col_pos)
                 self.checkboxes.append(checkbox)
             
@@ -637,12 +746,36 @@ class InteractivePlotWindow(QMainWindow):
         """Save current axis limits and other settings"""
         if not hasattr(self, 'axL'):
             return
+        
+        # Build series_formats with names and visibility for readability
+        left_cols = list(self.df_axL.columns)
+        right_cols = list(self.df_axR.columns) if (self.df_axR is not None and not self.df_axR.empty) else []
+        all_cols = left_cols + right_cols
+        
+        series_formats_with_names = []
+        for i, fmt in enumerate(self.series_formats):
+            name = all_cols[i] if i < len(all_cols) else f"Series {i}"
+            visible_val = 1 if (i < len(self.series_visible) and self.series_visible[i]) else 0
+            # Build dict with desired key order: series_name first, then visible, then known style keys
+            ordered = {
+                'series_name': name,
+                'visible': visible_val,
+            }
+            # Preferred order for style keys
+            for key in ['linestyle', 'marker', 'markersize']:
+                if key in fmt:
+                    ordered[key] = fmt[key]
+            # Append any other keys from fmt that aren't already included
+            for key, value in fmt.items():
+                if key not in ordered:
+                    ordered[key] = value
+            series_formats_with_names.append(ordered)
             
         settings = {
             'axLxlim': list(self.axL.get_xlim()),
             'axLylim': list(self.axL.get_ylim()),
-            'series_visible': self.series_visible,
-            'auto_update': self.auto_update
+            'auto_update': self.auto_update,
+            'series_formats': series_formats_with_names
         }
         
         if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
@@ -670,6 +803,24 @@ class InteractivePlotWindow(QMainWindow):
                 self.plot()
                 self.save_current_settings()
         return toggle
+    
+    def create_format_menu(self, index, series_name):
+        """Create a context menu handler for formatting a series."""
+        def show_format_dialog(pos):
+            from PyQt6.QtWidgets import QMenu
+            menu = QMenu()
+            format_action = menu.addAction("Format Line/Marker...")
+            action = menu.exec(self.checkboxes[index].mapToGlobal(pos))
+            
+            if action == format_action:
+                # Show format dialog
+                dlg = SeriesFormatDialog(self, series_name, self.series_formats[index])
+                if dlg.exec() == QDialog.DialogCode.Accepted:
+                    self.series_formats[index] = dlg.get_format()
+                    if self.auto_update:
+                        self.plot()
+                        self.save_current_settings()
+        return show_format_dialog
 
     def toggle_auto_update(self, state):
         """Toggle auto-update mode for series visibility changes."""
@@ -1049,7 +1200,9 @@ class InteractivePlotWindow(QMainWindow):
         # Plot left-axis columns
         for i, col in enumerate(self.df_axL.columns):
             if self.series_visible[i]:
-                self.axL.plot(self.df_axL.index, self.df_axL[col], label=col, alpha=0.5, color=colors[color_index])
+                fmt = self.series_formats[i]
+                self.axL.plot(self.df_axL.index, self.df_axL[col], label=col, alpha=0.5, color=colors[color_index],
+                             linestyle=fmt['linestyle'], marker=fmt['marker'], markersize=fmt['markersize'])
             color_index += 1
 
         handles, labels = self.axL.get_legend_handles_labels()
@@ -1071,7 +1224,9 @@ class InteractivePlotWindow(QMainWindow):
             for i, col in enumerate(self.df_axR.columns, start=len(self.df_axL.columns)):
                 if self.series_visible[i]:
                     # align on left x index (assumes same index or compatible)
-                    self.axR.plot(self.df_axL.index, self.df_axR[col], label=col, alpha=0.5, color=colors[color_index])
+                    fmt = self.series_formats[i]
+                    self.axR.plot(self.df_axL.index, self.df_axR[col], label=col, alpha=0.5, color=colors[color_index],
+                                 linestyle=fmt['linestyle'], marker=fmt['marker'], markersize=fmt['markersize'])
                 color_index += 1
             if self.df_axR_Title:
                 self.axR.set_ylabel(self.df_axR_Title)
