@@ -39,7 +39,7 @@ def _is_legacy_flat_settings(data):
     """Detect if the settings dict is in legacy flat format (not keyed)."""
     return isinstance(data, dict) and 'axLxlim' in data and 'axLylim' in data
 
-def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
+def save_plot_settings(settings, filename='InteractivePlotWindowMultiAxis.json'):
     """Save settings to JSON.
     If filename contains '::KEY', store under that KEY inside a shared JSON file.
     Backward compatible with flat JSON structure.
@@ -94,7 +94,7 @@ def save_plot_settings(settings, filename='InteractivePlotWindow.json'):
     except Exception as e:
         print(f"Warning: could not save plot settings to {base_file}: {e}")
 
-def load_plot_settings(filename='InteractivePlotWindow.json'):
+def load_plot_settings(filename='InteractivePlotWindowMultiAxis.json'):
     """Load settings from JSON.
     If filename contains '::KEY', load that profile from the shared JSON file.
     Returns None if not found.
@@ -235,15 +235,20 @@ class CustomNavigationToolbar(NavigationToolbar2QT):
         self.addSeparator()
         self.addAction('Autoscale RY', self.autoscaleRightY)
         self.addSeparator()        
-        self.addAction('<', self.moveLeft)
+        self.move_left_action = self.addAction('<', self.moveLeft)
+        self.move_left_action.setToolTip(r'Move left 25% of the current x-axis range')
         self.addSeparator()
-        self.addAction('>', self.moveRight)
+        self.move_right_action = self.addAction('>', self.moveRight)
+        self.move_right_action.setToolTip(r'Move right 25% of the current x-axis range')
         self.addSeparator()
-        self.addAction('Reset X', self.plot_window.resetXAxis)
+        self.reset_x_action = self.addAction('Reset X', self.plot_window.resetXAxis)
+        self.reset_x_action.setToolTip('Reset X-axis to min <-> max')
         self.addSeparator()
-        self.addAction('><', self.plot_window.zoom_in_x)
+        self.zoom_in_action = self.addAction('><', self.plot_window.zoom_in_x)
+        self.zoom_in_action.setToolTip('Zoom in X-axis')
         self.addSeparator()
-        self.addAction('<>', self.plot_window.zoom_out_x)
+        self.zoom_out_action = self.addAction('<>', self.plot_window.zoom_out_x)
+        self.zoom_out_action.setToolTip('Zoom out X-axis')
         self.addSeparator()
         
         # Add Measure button
@@ -306,49 +311,106 @@ class CustomNavigationToolbar(NavigationToolbar2QT):
         self.update_locator_info()
 
     def autoscale(self):
-        ax1 = self.plot_window.axL
-        ax1.autoscale(axis='both')
-        self.canvas.draw()
-        self.update_xAxisLen()
-        self.plot_window.save_current_settings()
+        """Autoscale both X and Y axes for all units."""
+        if hasattr(self.plot_window, 'axes') and self.plot_window.axes:
+            primary_axis = list(self.plot_window.axes.values())[0]
+            primary_axis.autoscale(axis='both')
+            self.canvas.draw()
+            self.update_xAxisLen()
+            self.plot_window.save_current_settings()
 
     def autoscaleLeftY(self):
-        df_axL = self.plot_window.df_axL
-        series_visibleLeftY = self.plot_window.series_visible[:len(df_axL.columns)]
-        if not any(series_visibleLeftY):
+        """Autoscale Y-axis for the primary (first) unit."""
+        if not hasattr(self.plot_window, 'axes') or not self.plot_window.axes:
             return
+        
+        # Get the first unit (primary/left axis)
+        first_unit = self.plot_window.unit_list[0] if self.plot_window.unit_list else None
+        if not first_unit:
+            return
+            
+        axis = self.plot_window.axes[first_unit]
+        unit_cols = self.plot_window.axis_groups[first_unit]
+        all_cols = list(self.plot_window.df_data.columns)
+        
+        # Find which series are visible for this unit
+        visible_series = []
+        for col in unit_cols:
+            series_idx = all_cols.index(col)
+            if series_idx < len(self.plot_window.series_visible) and self.plot_window.series_visible[series_idx]:
+                visible_series.append(col)
+        
+        if not visible_series:
+            return
+        
         # Get current x-axis limits
-        xlim = self.plot_window.axL.get_xlim()
+        xlim = axis.get_xlim()
         xlim = [mdates.num2date(x).replace(tzinfo=None) for x in xlim]
-        selected_columns = df_axL[(df_axL.index >= xlim[0]) & (df_axL.index <= xlim[1])]
-        selected_columns = selected_columns.loc[:, series_visibleLeftY]
-        if selected_columns.empty:
+        
+        # Select data within x-range for visible series
+        selected_data = self.plot_window.df_data[visible_series]
+        selected_data = selected_data[(selected_data.index >= xlim[0]) & (selected_data.index <= xlim[1])]
+        
+        if selected_data.empty:
             return
-        ylim = (selected_columns.min().min(), selected_columns.max().max())
-        self.plot_window.axL.set_ylim(ylim)
+        
+        # Calculate Y limits with some padding
+        y_min = selected_data.min().min()
+        y_max = selected_data.max().max()
+        y_range = y_max - y_min
+        padding = y_range * 0.05  # 5% padding
+        
+        axis.set_ylim(y_min - padding, y_max + padding)
         self.canvas.draw()
         self.plot_window.save_current_settings()
 
     def autoscaleRightY(self):
-        # Guard if there is no right-axis data
-        df_axR = self.plot_window.df_axR
-        if df_axR is None or df_axR.empty:
+        """Autoscale Y-axis for all secondary (right-side) units."""
+        if not hasattr(self.plot_window, 'axes') or not self.plot_window.axes:
             return
-        # compute visible columns for right axis
-        df_axL = self.plot_window.df_axL
-        total_left = len(df_axL.columns)
-        series_visibleRightY = self.plot_window.series_visible[total_left: total_left + len(df_axR.columns)]
-        if not any(series_visibleRightY):
+        
+        # Get all units except the first one (all right-side axes)
+        right_units = self.plot_window.unit_list[1:] if len(self.plot_window.unit_list) > 1 else []
+        
+        if not right_units:
             return
-        # Get current x-axis limits
-        xlim = self.plot_window.axR.get_xlim()
-        xlim = [mdates.num2date(x).replace(tzinfo=None) for x in xlim]
-        selected_columns = df_axR[(df_axR.index >= xlim[0]) & (df_axR.index <= xlim[1])]
-        selected_columns = selected_columns.loc[:, series_visibleRightY]
-        if selected_columns.empty:
-            return
-        ylim = (selected_columns.min().min(), selected_columns.max().max())
-        self.plot_window.axR.set_ylim(ylim)
+        
+        all_cols = list(self.plot_window.df_data.columns)
+        
+        # Autoscale each right-side axis
+        for unit in right_units:
+            axis = self.plot_window.axes[unit]
+            unit_cols = self.plot_window.axis_groups[unit]
+            
+            # Find which series are visible for this unit
+            visible_series = []
+            for col in unit_cols:
+                series_idx = all_cols.index(col)
+                if series_idx < len(self.plot_window.series_visible) and self.plot_window.series_visible[series_idx]:
+                    visible_series.append(col)
+            
+            if not visible_series:
+                continue
+            
+            # Get current x-axis limits
+            xlim = axis.get_xlim()
+            xlim = [mdates.num2date(x).replace(tzinfo=None) for x in xlim]
+            
+            # Select data within x-range for visible series
+            selected_data = self.plot_window.df_data[visible_series]
+            selected_data = selected_data[(selected_data.index >= xlim[0]) & (selected_data.index <= xlim[1])]
+            
+            if selected_data.empty:
+                continue
+            
+            # Calculate Y limits with some padding
+            y_min = selected_data.min().min()
+            y_max = selected_data.max().max()
+            y_range = y_max - y_min
+            padding = y_range * 0.05  # 5% padding
+            
+            axis.set_ylim(y_min - padding, y_max + padding)
+        
         self.canvas.draw()
         self.plot_window.save_current_settings()
 
@@ -382,37 +444,52 @@ class CustomNavigationToolbar(NavigationToolbar2QT):
                 self.locatorLabel.setText("Locator: N/A")
     
     def moveLeft(self):
-        xlim = self.plot_window.axL.get_xlim()
-        step = (xlim[1] - xlim[0]) * 0.25  # Move 25% of the current x-axis range
-        self.plot_window.axL.set_xlim(xlim[0] - step, xlim[1] - step)
-        self.canvas.draw()
-        self.update_xAxisLen()
-        self.plot_window.save_current_settings()
+        if hasattr(self.plot_window, 'axes') and self.plot_window.axes:
+            primary_axis = list(self.plot_window.axes.values())[0]
+            xlim = primary_axis.get_xlim()
+            step = (xlim[1] - xlim[0]) * 0.25  # Move 25% of the current x-axis range
+            primary_axis.set_xlim(xlim[0] - step, xlim[1] - step)
+            self.canvas.draw()
+            self.update_xAxisLen()
+            self.plot_window.save_current_settings()
 
     def moveRight(self):
-        xlim = self.plot_window.axL.get_xlim()
-        step = (xlim[1] - xlim[0]) * 0.25  # Move 25% of the current x-axis range
-        self.plot_window.axL.set_xlim(xlim[0] + step, xlim[1] + step)
-        self.canvas.draw()
-        self.update_xAxisLen()
-        self.plot_window.save_current_settings()
+        if hasattr(self.plot_window, 'axes') and self.plot_window.axes:
+            primary_axis = list(self.plot_window.axes.values())[0]
+            xlim = primary_axis.get_xlim()
+            step = (xlim[1] - xlim[0]) * 0.25  # Move 25% of the current x-axis range
+            primary_axis.set_xlim(xlim[0] + step, xlim[1] + step)
+            self.canvas.draw()
+            self.update_xAxisLen()
+            self.plot_window.save_current_settings()
 
-class InteractivePlotWindow(QMainWindow):
-    def __init__(self, df_axL, df_axL_Title = None, df_axR=None, df_axR_Title = None, WindowTitle = None, initial_visible=None, settings_file=None):
+class InteractivePlotWindowMultiAxis(QMainWindow):
+    def __init__(self, df_data, WindowTitle=None, initial_visible=None, settings_file=None):
+        """
+        Multi-axis interactive plot window.
+        
+        Args:
+            df_data: DataFrame with all series. Column names should end with [unit] for automatic axis grouping.
+                     Example: "Flow [m3/h]", "Level [m]", "Temp [°C]"
+            WindowTitle: Window title string
+            initial_visible: List of initially visible series names
+            settings_file: Path to JSON settings file
+        """
         super().__init__()
         if WindowTitle is None:
-            self.setWindowTitle("Interactive Plot")
+            self.setWindowTitle("Interactive Plot - Multi Axis")
         else:
             self.setWindowTitle(WindowTitle)
 
-        # Store the DataFrames (ensure df_axR is a DataFrame if None)
-        self.df_axL = df_axL
-        self.df_axR = df_axR if df_axR is not None else pd.DataFrame()
-        self.df_axL_Title = df_axL_Title
-        self.df_axR_Title = df_axR_Title
+        # Store the DataFrame
+        self.df_data = df_data if df_data is not None else pd.DataFrame()
+        
+        # Extract units from column names and group series by unit
+        self.axis_groups, self.series_units = self._extract_units_and_group()
+        self.unit_list = list(self.axis_groups.keys())
         
         # Settings file path (default or custom)
-        self.settings_file = settings_file if settings_file is not None else 'InteractivePlotWindow.json'
+        self.settings_file = settings_file if settings_file is not None else 'InteractivePlotWindowMultiAxis.json'
         
         # Flag to check if it's the initial plot
         self.initial_plot = True
@@ -443,9 +520,9 @@ class InteractivePlotWindow(QMainWindow):
         self.measure_end_crosshair_h = None
         self.measure_end_crosshair_v = None
 
-        # Toggle button states (True = next click will check all, False = next click will uncheck all)
-        self.toggle_left_state = True  # Start with "check all" behavior
-        self.toggle_right_state = True
+        # Toggle button states per unit
+        self.toggle_states = {unit: True for unit in self.unit_list}
+        self.toggle_all_state = True  # State for toggle all button
 
         # Create central widget
         self.central_widget = QWidget()
@@ -459,9 +536,7 @@ class InteractivePlotWindow(QMainWindow):
         self.toolbar = CustomNavigationToolbar(self.canvas, self, plot_window=self)
 
         # Determine columns and initial visibility
-        left_cols = list(self.df_axL.columns)
-        right_cols = list(self.df_axR.columns) if (self.df_axR is not None and not self.df_axR.empty) else []
-        all_cols = left_cols + right_cols
+        all_cols = list(self.df_data.columns)
 
         # Generate color palette for all series (same as used in plot())
         import matplotlib.pyplot as plt
@@ -559,13 +634,9 @@ class InteractivePlotWindow(QMainWindow):
         self.dark_mode_btn.clicked.connect(self.toggle_dark_mode)
         control_layout.addWidget(self.dark_mode_btn)
         
-        self.uncheck_all_left_btn = QPushButton("Toggle All Left")
-        self.uncheck_all_left_btn.clicked.connect(self.uncheck_all_left)
-        control_layout.addWidget(self.uncheck_all_left_btn)
-        
-        self.uncheck_all_right_btn = QPushButton("Toggle All Right")
-        self.uncheck_all_right_btn.clicked.connect(self.uncheck_all_right)
-        control_layout.addWidget(self.uncheck_all_right_btn)
+        self.toggle_all_btn = QPushButton("Toggle All")
+        self.toggle_all_btn.clicked.connect(self.toggle_all_series)
+        control_layout.addWidget(self.toggle_all_btn)
         
         self.crosshair_btn = QPushButton("Crosshair")
         self.crosshair_btn.setCheckable(True)
@@ -579,132 +650,70 @@ class InteractivePlotWindow(QMainWindow):
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
 
-        # Build checkboxes below the chart with left and right sections in framed boxes
+        # Build checkboxes grouped by unit in framed boxes
         from PyQt6.QtWidgets import QGridLayout, QFrame
         from calculate_button_text_metrics import calculate_optimal_rows
         import math
         
-        # Create horizontal layout for left and right framed sections
+        # Create horizontal layout for unit sections
         series_layout = QHBoxLayout()
 
-        # Calculate optimal number of rows for each side based on button text lengths (min 2 for symmetry)
-        num_rows_left = calculate_optimal_rows(left_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
-        num_rows_right = calculate_optimal_rows(right_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
-        # Keep both sides visually aligned: use the maximum of the two as the unified row count
-        unified_rows = max(num_rows_left, num_rows_right)
-        num_rows_left = unified_rows
-        num_rows_right = unified_rows
-
-        # Calculate number of columns needed for each side
-        num_cols_left = math.ceil(len(left_cols) / num_rows_left) if len(left_cols) > 0 else 0
-        num_cols_right = math.ceil(len(right_cols) / num_rows_right) if len(right_cols) > 0 else 0
+        # Define colors for different units (cycle through these)
+        unit_colors = [
+            ('#e8f4f8', '#0066cc', '#003366'),  # Blue
+            ('#fff5e6', '#cc6600', '#663300'),  # Orange
+            ('#e8f8e8', '#00cc66', '#003300'),  # Green
+            ('#f8e8f8', '#cc00cc', '#660066'),  # Purple
+            ('#f8f8e8', '#cccc00', '#666600'),  # Yellow
+        ]
         
-        # LEFT AXIS SECTION (Blue frame)
-        if len(left_cols) > 0:
-            left_frame = QFrame()
-            left_frame.setStyleSheet("""
-                QFrame {
-                    background-color: #e8f4f8;
-                    border: 2px solid #0066cc;
+        # Create a frame for each unit group
+        for unit_idx, unit in enumerate(self.unit_list):
+            unit_cols = self.axis_groups[unit]
+            if len(unit_cols) == 0:
+                continue
+                
+            # Calculate optimal number of rows for this unit
+            num_rows = calculate_optimal_rows(unit_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
+            num_cols = math.ceil(len(unit_cols) / num_rows)
+            
+            # Get color scheme for this unit (cycle through colors)
+            bg_color, border_color, text_color = unit_colors[unit_idx % len(unit_colors)]
+            
+            # Create frame for this unit
+            unit_frame = QFrame()
+            unit_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {bg_color};
+                    border: 2px solid {border_color};
                     border-radius: 5px;
                     padding: 5px;
-                }
+                }}
             """)
-            left_layout = QGridLayout(left_frame)
-            left_layout.setSpacing(2)
-            left_layout.setContentsMargins(5, 5, 5, 5)
+            # Add context menu to unit frame for reordering
+            unit_frame.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            unit_frame.customContextMenuRequested.connect(lambda pos, u=unit: self.show_unit_context_menu(pos, u, unit_frame))
             
-            for i, col in enumerate(left_cols):
-                row = i % num_rows_left  # Use modulo to cycle through rows
-                col_pos = i // num_rows_left  # Divide to get column position
+            unit_layout = QGridLayout(unit_frame)
+            unit_layout.setSpacing(2)
+            unit_layout.setContentsMargins(5, 5, 5, 5)
+            
+            # Add checkboxes for this unit's series
+            for i, col in enumerate(unit_cols):
+                # Find the index of this column in all_cols
+                series_idx = all_cols.index(col)
+                
+                row = i % num_rows
+                col_pos = i // num_rows
                 checkbox = QCheckBox(f"{col}")
                 
                 # Get series color and convert to hex
-                series_color_hex = self._rgba_to_hex(self.series_colors[i])
-                
-                checkbox.setStyleSheet(f"""
-                    QCheckBox {{ 
-                        background-color: transparent; 
-                        color: #003366;
-                        spacing: 5px;
-                    }}
-                    QCheckBox::indicator {{
-                        width: 13px;
-                        height: 13px;
-                        border: 2px solid {series_color_hex};
-                        border-radius: 3px;
-                        background-color: white;
-                    }}
-                    QCheckBox::indicator:checked {{
-                        background-color: {series_color_hex};
-                        border: 2px solid {series_color_hex};
-                    }}
-                """)
-                # Tooltip with basic info and stats (when numeric)
-                try:
-                    s = self.df_axL[col]
-                    tip_lines = [f"{col}", "Axis: Left"]
-                    if pd.api.types.is_numeric_dtype(s):
-                        nn = int(s.count())
-                        s_valid = s.dropna()
-                        if not s_valid.empty:
-                            s_min = s_valid.min()
-                            s_max = s_valid.max()
-                            tip_lines += [
-                                f"Non-null: {nn:,}",
-                                f"Min: {s_min:.6g}",
-                                f"Max: {s_max:.6g}"
-                            ]
-                        else:
-                            tip_lines += [f"Non-null: {nn:,}"]
-                    else:
-                        tip_lines += [f"Type: {str(s.dtype)}", f"Non-null: {int(s.count()):,}"]
-                    checkbox.setToolTip("\n".join(tip_lines))
-                except Exception:
-                    # Fallback simple tooltip
-                    checkbox.setToolTip(f"{col} (Left axis)")
-                checkbox.blockSignals(True)
-                checkbox.setChecked(bool(self.series_visible[i]))
-                checkbox.blockSignals(False)
-                checkbox.stateChanged.connect(self.create_toggle_function(i))
-                checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-                checkbox.customContextMenuRequested.connect(self.create_format_menu(i, col))
-                left_layout.addWidget(checkbox, row, col_pos)
-                self.checkboxes.append(checkbox)
-            
-            # Set size policy to minimize vertical expansion
-            left_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-            # Add with stretch factor based on number of columns needed
-            series_layout.addWidget(left_frame, stretch=num_cols_left)
-        
-        # RIGHT AXIS SECTION (Orange frame)
-        if len(right_cols) > 0:
-            right_frame = QFrame()
-            right_frame.setStyleSheet("""
-                QFrame {
-                    background-color: #fff5e6;
-                    border: 2px solid #cc6600;
-                    border-radius: 5px;
-                    padding: 5px;
-                }
-            """)
-            right_layout = QGridLayout(right_frame)
-            right_layout.setSpacing(2)
-            right_layout.setContentsMargins(5, 5, 5, 5)
-            
-            for i, col in enumerate(right_cols):
-                row = i % num_rows_right  # Use modulo to cycle through rows
-                col_pos = i // num_rows_right  # Divide to get column position
-                checkbox = QCheckBox(f"{col}")
-                
-                # Get series color and convert to hex (offset by left columns)
-                series_idx = len(left_cols) + i
                 series_color_hex = self._rgba_to_hex(self.series_colors[series_idx])
                 
                 checkbox.setStyleSheet(f"""
                     QCheckBox {{ 
                         background-color: transparent; 
-                        color: #663300;
+                        color: {text_color};
                         spacing: 5px;
                     }}
                     QCheckBox::indicator {{
@@ -719,10 +728,11 @@ class InteractivePlotWindow(QMainWindow):
                         border: 2px solid {series_color_hex};
                     }}
                 """)
-                # Tooltip with basic info and stats (when numeric)
+                
+                # Tooltip with basic info and stats
                 try:
-                    s = self.df_axR[col]
-                    tip_lines = [f"{col}", "Axis: Right"]
+                    s = self.df_data[col]
+                    tip_lines = [f"{col}", f"Unit: {unit}"]
                     if pd.api.types.is_numeric_dtype(s):
                         nn = int(s.count())
                         s_valid = s.dropna()
@@ -740,21 +750,20 @@ class InteractivePlotWindow(QMainWindow):
                         tip_lines += [f"Type: {str(s.dtype)}", f"Non-null: {int(s.count()):,}"]
                     checkbox.setToolTip("\n".join(tip_lines))
                 except Exception:
-                    # Fallback simple tooltip
-                    checkbox.setToolTip(f"{col} (Right axis)")
+                    checkbox.setToolTip(f"{col} ({unit})")
+                
                 checkbox.blockSignals(True)
-                checkbox.setChecked(bool(self.series_visible[len(left_cols) + i]))
+                checkbox.setChecked(bool(self.series_visible[series_idx]))
                 checkbox.blockSignals(False)
-                checkbox.stateChanged.connect(self.create_toggle_function(len(left_cols) + i))
+                checkbox.stateChanged.connect(self.create_toggle_function(series_idx))
                 checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-                checkbox.customContextMenuRequested.connect(self.create_format_menu(len(left_cols) + i, col))
-                right_layout.addWidget(checkbox, row, col_pos)
+                checkbox.customContextMenuRequested.connect(self.create_format_menu(series_idx, col))
+                unit_layout.addWidget(checkbox, row, col_pos)
                 self.checkboxes.append(checkbox)
             
-            # Set size policy to minimize vertical expansion
-            right_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-            # Add with stretch factor based on number of columns needed
-            series_layout.addWidget(right_frame, stretch=num_cols_right)
+            # Set size policy
+            unit_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+            series_layout.addWidget(unit_frame, stretch=num_cols)
 
         layout.addLayout(series_layout)
         
@@ -772,6 +781,33 @@ class InteractivePlotWindow(QMainWindow):
         # Initial plot
         self.plot()
 
+    def _extract_units_and_group(self):
+        """
+        Extract units from column names and group series by unit.
+        Column names should end with [unit], e.g., "Flow [m3/h]"
+        
+        Returns:
+            axis_groups: dict mapping unit -> list of series names
+            series_units: dict mapping series name -> unit
+        """
+        axis_groups = {}
+        series_units = {}
+        
+        for col in self.df_data.columns:
+            # Try to extract unit from [unit] pattern at end of name
+            match = re.search(r'\[([^\]]+)\]\s*', col) #End of string: re.search(r'\[([^\]]+)\]\s*$', col)
+            if match:
+                unit = match.group(1).strip()
+            else:
+                unit = 'default'  # Series without unit go to default axis
+            
+            if unit not in axis_groups:
+                axis_groups[unit] = []
+            axis_groups[unit].append(col)
+            series_units[col] = unit
+        
+        return axis_groups, series_units
+
     def closeEvent(self, event):
         """Save settings when window is closed"""
         self.save_current_settings()
@@ -779,13 +815,11 @@ class InteractivePlotWindow(QMainWindow):
 
     def save_current_settings(self):
         """Save current axis limits and other settings"""
-        if not hasattr(self, 'axL'):
+        if not hasattr(self, 'axes'):
             return
         
         # Build series_formats with names and visibility for readability
-        left_cols = list(self.df_axL.columns)
-        right_cols = list(self.df_axR.columns) if (self.df_axR is not None and not self.df_axR.empty) else []
-        all_cols = left_cols + right_cols
+        all_cols = list(self.df_data.columns)
         
         series_formats_with_names = []
         for i, fmt in enumerate(self.series_formats):
@@ -807,17 +841,14 @@ class InteractivePlotWindow(QMainWindow):
             series_formats_with_names.append(ordered)
             
         settings = {
-            'axLxlim': list(self.axL.get_xlim()),
-            'axLylim': list(self.axL.get_ylim()),
             'auto_update': self.auto_update,
             'series_formats': series_formats_with_names
         }
         
-        if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
-            settings.update({
-                'axRxlim': list(self.axR.get_xlim()),
-                'axRylim': list(self.axR.get_ylim())
-            })
+        # Save axis limits for each unit
+        for unit, axis in self.axes.items():
+            settings[f'xlim_{unit}'] = list(axis.get_xlim())
+            settings[f'ylim_{unit}'] = list(axis.get_ylim())
             
         save_plot_settings(settings, self.settings_file)
 
@@ -857,6 +888,266 @@ class InteractivePlotWindow(QMainWindow):
                         self.save_current_settings()
         return show_format_dialog
 
+    def show_unit_context_menu(self, pos, unit, widget):
+        """Show context menu for unit group to allow reordering."""
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu()
+        
+        current_idx = self.unit_list.index(unit)
+        
+        # Add menu options
+        if current_idx > 0:
+            move_left_action = menu.addAction(f"← Move '{unit}' Left")
+        else:
+            move_left_action = None
+            
+        if current_idx < len(self.unit_list) - 1:
+            move_right_action = menu.addAction(f"Move '{unit}' Right →")
+        else:
+            move_right_action = None
+        
+        if len(self.unit_list) > 1:
+            menu.addSeparator()
+            make_primary_action = menu.addAction(f"⭐ Make '{unit}' Primary Axis (Left)")
+        else:
+            make_primary_action = None
+        
+        # Show menu and handle action
+        action = menu.exec(widget.mapToGlobal(pos))
+        
+        if action == move_left_action:
+            self.reorder_unit(unit, -1)
+        elif action == move_right_action:
+            self.reorder_unit(unit, 1)
+        elif action == make_primary_action:
+            self.move_unit_to_primary(unit)
+    
+    def show_axis_context_menu(self, global_pos, unit):
+        """Show context menu when right-clicking on an axis in the plot area."""
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu()
+        
+        current_idx = self.unit_list.index(unit)
+        
+        # Add menu options
+        if current_idx > 0:
+            move_left_action = menu.addAction(f"← Move '{unit}' Axis Left")
+        else:
+            move_left_action = None
+            
+        if current_idx < len(self.unit_list) - 1:
+            move_right_action = menu.addAction(f"Move '{unit}' Axis Right →")
+        else:
+            move_right_action = None
+        
+        if len(self.unit_list) > 1:
+            menu.addSeparator()
+            make_primary_action = menu.addAction(f"⭐ Make '{unit}' Primary Axis (Left)")
+        else:
+            make_primary_action = None
+        
+        # Show menu at the given global position
+        action = menu.exec(global_pos)
+        
+        if action == move_left_action:
+            self.reorder_unit(unit, -1)
+        elif action == move_right_action:
+            self.reorder_unit(unit, 1)
+        elif action == make_primary_action:
+            self.move_unit_to_primary(unit)
+    
+    def reorder_unit(self, unit, direction):
+        """Move a unit left (-1) or right (+1) in the axis order."""
+        current_idx = self.unit_list.index(unit)
+        new_idx = current_idx + direction
+        
+        # Validate new index
+        if new_idx < 0 or new_idx >= len(self.unit_list):
+            return
+        
+        # Swap units in the list
+        self.unit_list[current_idx], self.unit_list[new_idx] = self.unit_list[new_idx], self.unit_list[current_idx]
+        
+        # Rebuild UI and replot
+        self.rebuild_ui()
+    
+    def move_unit_to_primary(self, unit):
+        """Move a unit to be the primary (leftmost) axis."""
+        current_idx = self.unit_list.index(unit)
+        
+        if current_idx == 0:
+            return  # Already primary
+        
+        # Move unit to front of list
+        self.unit_list.pop(current_idx)
+        self.unit_list.insert(0, unit)
+        
+        # Rebuild UI and replot
+        self.rebuild_ui()
+    
+    def rebuild_ui(self):
+        """Rebuild the UI with updated unit order."""
+        # Get the main layout
+        layout = self.central_widget.layout()
+        
+        # Find and remove only the series checkbox layout (should be the last layout)
+        # The layout order is: control_layout, toolbar, canvas, series_layout
+        # We want to keep control_layout, toolbar, and canvas, and only remove/rebuild series_layout
+        last_item = None
+        last_item_index = -1
+        
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
+            # Look for a layout (not a widget) that's not the first one (control_layout)
+            if item and item.layout() and not item.widget() and i > 0:
+                last_item = item
+                last_item_index = i
+        
+        # Remove the series layout if found
+        if last_item and last_item_index >= 0:
+            item = layout.takeAt(last_item_index)
+            if item.layout():
+                # Clear all widgets from the layout
+                self._clear_layout(item.layout())
+                # Delete the layout itself
+                item.layout().deleteLater()
+        
+        # Rebuild checkboxes with new unit order
+        self.checkboxes = []
+        all_cols = list(self.df_data.columns)
+        
+        # Build checkboxes grouped by unit in framed boxes
+        from PyQt6.QtWidgets import QGridLayout, QFrame
+        from calculate_button_text_metrics import calculate_optimal_rows
+        import math
+        
+        # Create horizontal layout for unit sections
+        series_layout = QHBoxLayout()
+
+        # Define colors for different units (cycle through these)
+        unit_colors = [
+            ('#e8f4f8', '#0066cc', '#003366'),  # Blue
+            ('#fff5e6', '#cc6600', '#663300'),  # Orange
+            ('#e8f8e8', '#00cc66', '#003300'),  # Green
+            ('#f8e8f8', '#cc00cc', '#660066'),  # Purple
+            ('#f8f8e8', '#cccc00', '#666600'),  # Yellow
+        ]
+        
+        # Create a frame for each unit group
+        for unit_idx, unit in enumerate(self.unit_list):
+            unit_cols = self.axis_groups[unit]
+            if len(unit_cols) == 0:
+                continue
+                
+            # Calculate optimal number of rows for this unit
+            num_rows = calculate_optimal_rows(unit_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
+            num_cols = math.ceil(len(unit_cols) / num_rows)
+            
+            # Get color scheme for this unit (cycle through colors)
+            bg_color, border_color, text_color = unit_colors[unit_idx % len(unit_colors)]
+            
+            # Create frame for this unit
+            unit_frame = QFrame()
+            unit_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {bg_color};
+                    border: 2px solid {border_color};
+                    border-radius: 5px;
+                    padding: 5px;
+                }}
+            """)
+            # Add context menu to unit frame for reordering
+            unit_frame.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            unit_frame.customContextMenuRequested.connect(lambda pos, u=unit: self.show_unit_context_menu(pos, u, unit_frame))
+            
+            unit_layout = QGridLayout(unit_frame)
+            unit_layout.setSpacing(2)
+            unit_layout.setContentsMargins(5, 5, 5, 5)
+            
+            # Add checkboxes for this unit's series
+            for i, col in enumerate(unit_cols):
+                # Find the index of this column in all_cols
+                series_idx = all_cols.index(col)
+                
+                row = i % num_rows
+                col_pos = i // num_rows
+                checkbox = QCheckBox(f"{col}")
+                
+                # Get series color and convert to hex
+                series_color_hex = self._rgba_to_hex(self.series_colors[series_idx])
+                
+                checkbox.setStyleSheet(f"""
+                    QCheckBox {{ 
+                        background-color: transparent; 
+                        color: {text_color};
+                        spacing: 5px;
+                    }}
+                    QCheckBox::indicator {{
+                        width: 13px;
+                        height: 13px;
+                        border: 2px solid {series_color_hex};
+                        border-radius: 3px;
+                        background-color: white;
+                    }}
+                    QCheckBox::indicator:checked {{
+                        background-color: {series_color_hex};
+                        border: 2px solid {series_color_hex};
+                    }}
+                """)
+                
+                # Tooltip with basic info and stats
+                try:
+                    s = self.df_data[col]
+                    tip_lines = [f"{col}", f"Unit: {unit}"]
+                    if pd.api.types.is_numeric_dtype(s):
+                        nn = int(s.count())
+                        s_valid = s.dropna()
+                        if not s_valid.empty:
+                            s_min = s_valid.min()
+                            s_max = s_valid.max()
+                            tip_lines += [
+                                f"Non-null: {nn:,}",
+                                f"Min: {s_min:.6g}",
+                                f"Max: {s_max:.6g}"
+                            ]
+                        else:
+                            tip_lines += [f"Non-null: {nn:,}"]
+                    else:
+                        tip_lines += [f"Type: {str(s.dtype)}", f"Non-null: {int(s.count()):,}"]
+                    checkbox.setToolTip("\n".join(tip_lines))
+                except Exception:
+                    checkbox.setToolTip(f"{col} ({unit})")
+                
+                checkbox.blockSignals(True)
+                checkbox.setChecked(bool(self.series_visible[series_idx]))
+                checkbox.blockSignals(False)
+                checkbox.stateChanged.connect(self.create_toggle_function(series_idx))
+                checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                checkbox.customContextMenuRequested.connect(self.create_format_menu(series_idx, col))
+                unit_layout.addWidget(checkbox, row, col_pos)
+                self.checkboxes.append(checkbox)
+            
+            # Set size policy
+            unit_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+            series_layout.addWidget(unit_frame, stretch=num_cols)
+
+        # Add the checkbox layout back to the main layout
+        layout.addLayout(series_layout)
+        
+        # Replot with new axis order
+        self.plot()
+        self.save_current_settings()
+    
+    def _clear_layout(self, layout):
+        """Recursively clear all widgets and sub-layouts from a layout."""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self._clear_layout(item.layout())
+                item.layout().deleteLater()
+
     def toggle_auto_update(self, state):
         """Toggle auto-update mode for series visibility changes."""
         self.auto_update = bool(state)
@@ -868,13 +1159,13 @@ class InteractivePlotWindow(QMainWindow):
         self.plot()
         self.save_current_settings()
 
-    def uncheck_all_left(self):
-        """Alternate between checking all and unchecking all left axis series."""
-        num_left = len(self.df_axL.columns)
+    def toggle_all_series(self):
+        """Toggle all series on/off."""
         # Determine the new state based on current toggle state
-        new_state = self.toggle_left_state
+        new_state = self.toggle_all_state
         
-        for i in range(num_left):
+        # Apply to all series
+        for i in range(len(self.series_visible)):
             self.series_visible[i] = new_state
             if i < len(self.checkboxes):
                 self.checkboxes[i].blockSignals(True)
@@ -882,28 +1173,7 @@ class InteractivePlotWindow(QMainWindow):
                 self.checkboxes[i].blockSignals(False)
         
         # Flip the state for next time
-        self.toggle_left_state = not self.toggle_left_state
-        
-        if self.auto_update:
-            self.plot()
-            self.save_current_settings()
-    
-    def uncheck_all_right(self):
-        """Alternate between checking all and unchecking all right axis series."""
-        num_left = len(self.df_axL.columns)
-        num_right = len(self.df_axR.columns) if (self.df_axR is not None and not self.df_axR.empty) else 0
-        # Determine the new state based on current toggle state
-        new_state = self.toggle_right_state
-        
-        for i in range(num_left, num_left + num_right):
-            self.series_visible[i] = new_state
-            if i < len(self.checkboxes):
-                self.checkboxes[i].blockSignals(True)
-                self.checkboxes[i].setChecked(new_state)
-                self.checkboxes[i].blockSignals(False)
-        
-        # Flip the state for next time
-        self.toggle_right_state = not self.toggle_right_state
+        self.toggle_all_state = not self.toggle_all_state
         
         if self.auto_update:
             self.plot()
@@ -935,11 +1205,9 @@ class InteractivePlotWindow(QMainWindow):
         self.dark_mode = self.dark_mode_btn.isChecked()
         
     def _custom_format_coord(self, x, y):
-        """Custom coordinate formatter that always shows date as YYYY-MM-DD HH:MM"""
-        # CRITICAL: Must be set on BOTH axL and axR (if present) since the top-most
-        # axis (axR from twinx) handles mouse events and coordinate display
+        """Custom coordinate formatter that shows date and y-values for all visible axes"""
         
-        # Always format as YYYY-MM-DD HH:MM regardless of x-axis mode
+        # Format X coordinate as YYYY-MM-DD HH:MM
         xstr = ""
         try:
             dt = mdates.num2date(x)
@@ -957,39 +1225,129 @@ class InteractivePlotWindow(QMainWindow):
             except Exception as e2:
                 xstr = f"{x:.2f}"
         
-        # y parameter is the mouse y-coordinate in the axis that's handling the event
-        # If axR exists, it's on top and handles events, so y is in right-axis scale
-        # We need to transform it to left-axis scale for yL
-        yL = y
-        yR = None
-        
-        if self.df_axR is not None and not self.df_axR.empty and hasattr(self, 'axR') and self.axR is not None:
-            # When right axis exists, y is in right-axis coordinates
-            # Transform to left axis coordinates
+        # Get Y coordinates for all axes with visible series
+        y_parts = []
+        if hasattr(self, 'axes') and hasattr(self, 'unit_list') and hasattr(self, 'axis_groups'):
+            # Find the calling axis by checking which axis this format_coord belongs to
+            calling_axis = None
+            for unit, axis in self.axes.items():
+                if axis.format_coord == self._custom_format_coord:
+                    # Check if we're being called from this specific axis instance
+                    # The 'y' parameter is already in this axis's coordinate system
+                    # We need to find which axis it is
+                    calling_axis = axis
+                    calling_unit = unit
+                    break
+            
+            # For twinned axes, we need to convert between coordinate systems
+            # Get mouse event position if available
             try:
-                # Get the y-limits of both axes
-                ylim_R = self.axR.get_ylim()
-                ylim_L = self.axL.get_ylim()
+                # Get the last mouse event from the canvas
+                if hasattr(self.canvas, 'get_tk_widget'):
+                    # Try to get display coordinates
+                    pass
+            except:
+                pass
+            
+            # For each unit with visible series, calculate its Y coordinate
+            for unit in self.unit_list:
+                axis = self.axes[unit]
                 
-                # Normalize y from right axis scale (0 to 1)
-                y_norm = (y - ylim_R[0]) / (ylim_R[1] - ylim_R[0])
+                # Check if this unit has any visible series
+                unit_has_visible = False
+                if hasattr(self, 'series_visible'):
+                    unit_cols = self.axis_groups[unit]
+                    all_cols = list(self.df_data.columns)
+                    for col in unit_cols:
+                        series_idx = all_cols.index(col)
+                        if series_idx < len(self.series_visible) and self.series_visible[series_idx]:
+                            unit_has_visible = True
+                            break
                 
-                # Transform to left axis scale
-                yL = ylim_L[0] + y_norm * (ylim_L[1] - ylim_L[0])
-                yR = y  # Original y is already in right-axis scale
-            except Exception:
-                yL = y
-                yR = None
+                if unit_has_visible:
+                    try:
+                        # If this is the calling axis, use y directly
+                        if axis == calling_axis:
+                            y_val = y
+                        else:
+                            # Transform: data coords from calling_axis -> display -> data coords in this axis
+                            # Get display coordinates from calling axis
+                            display_point = calling_axis.transData.transform((x, y))
+                            # Transform back to this axis's data coordinates
+                            data_point = axis.transData.inverted().transform(display_point)
+                            y_val = data_point[1]
+                        
+                        y_parts.append(f"{unit}={y_val:.2f}")
+                    except Exception as e:
+                        # If transformation fails, skip this axis
+                        pass
         
-        # Return formatted string with explicit x= prefix to ensure it's clear
-        if yR is not None:
-            return f"x={xstr}  yL={yL:.2f}  yR={yR:.2f}"
+        if y_parts:
+            return f"x={xstr}  {' | '.join(y_parts)}"
         else:
-            return f"x={xstr}  y={yL:.2f}"
+            return f"x={xstr}  y={y:.2f}"
 
     def on_mouse_press(self, event):
         """Handle mouse button press - start drawing crosshair or set measurement point."""
-        if event.inaxes not in [self.axL, self.axR] or event.xdata is None or event.ydata is None:
+        if event.inaxes not in list(self.axes.values()) or event.xdata is None or event.ydata is None:
+            return
+        
+        # Handle right-click on axes to show unit reordering menu
+        if event.button == 3:  # Right mouse button
+            # Find which unit this axis belongs to
+            clicked_unit = None
+            for unit, axis in self.axes.items():
+                if event.inaxes == axis:
+                    clicked_unit = unit
+                    break
+            
+            if clicked_unit:
+                # Show a context menu with the unit name prominently displayed
+                from PyQt6.QtCore import QPoint
+                from PyQt6.QtWidgets import QMenu
+                
+                # Convert matplotlib event coordinates to global screen coordinates
+                canvas_pos = self.canvas.mapToGlobal(self.canvas.pos())
+                pixel_coords = event.inaxes.transData.transform((event.xdata, event.ydata))
+                canvas_height = self.canvas.height()
+                screen_x = int(canvas_pos.x() + pixel_coords[0])
+                screen_y = int(canvas_pos.y() + (canvas_height - pixel_coords[1]))
+                
+                # Create menu with unit indicator
+                menu = QMenu()
+                menu.setStyleSheet("QMenu { font-size: 11pt; }")
+                
+                # Add header showing which axis was clicked
+                header = menu.addAction(f"📊 Axis: {clicked_unit}")
+                header.setEnabled(False)
+                menu.addSeparator()
+                
+                current_idx = self.unit_list.index(clicked_unit)
+                
+                # Add menu options
+                move_left_action = None
+                move_right_action = None
+                make_primary_action = None
+                
+                if current_idx > 0:
+                    move_left_action = menu.addAction(f"← Move '{clicked_unit}' Left")
+                    
+                if current_idx < len(self.unit_list) - 1:
+                    move_right_action = menu.addAction(f"Move '{clicked_unit}' Right →")
+                
+                if len(self.unit_list) > 1 and current_idx > 0:
+                    menu.addSeparator()
+                    make_primary_action = menu.addAction(f"⭐ Make '{clicked_unit}' Primary Axis (Left)")
+                
+                # Show menu and handle action
+                action = menu.exec(QPoint(screen_x, screen_y))
+                
+                if action == move_left_action:
+                    self.reorder_unit(clicked_unit, -1)
+                elif action == move_right_action:
+                    self.reorder_unit(clicked_unit, 1)
+                elif action == make_primary_action:
+                    self.move_unit_to_primary(clicked_unit)
             return
         
         # Handle measurement mode
@@ -1015,12 +1373,15 @@ class InteractivePlotWindow(QMainWindow):
 
     def on_mouse_move(self, event):
         """Update crosshair position when mouse moves while button is pressed, or show preview line for measurement."""
+        # Check if event is in any of our axes
+        in_any_axis = event.inaxes in self.axes.values() if self.axes else False
+        
         # Show crosshair in regular crosshair mode (when mouse button is pressed)
-        if self.crosshair_enabled and self.mouse_pressed and event.inaxes in [self.axL, self.axR]:
+        if self.crosshair_enabled and self.mouse_pressed and in_any_axis:
             self.update_crosshair(event)
         
         # Show crosshair and preview line during measurement mode
-        if self.measure_enabled and event.inaxes in [self.axL, self.axR] and event.xdata is not None and event.ydata is not None:
+        if self.measure_enabled and in_any_axis and event.xdata is not None and event.ydata is not None:
             # Show crosshair in measurement mode only if crosshair is also enabled
             if self.crosshair_enabled:
                 self.update_crosshair(event)
@@ -1043,15 +1404,13 @@ class InteractivePlotWindow(QMainWindow):
             self.crosshair_hline_right.remove()
         
         # Create new crosshair lines at current position
-        self.crosshair_vline = self.axL.axvline(event.xdata, color='red', linestyle='--', linewidth=0.8, alpha=0.8, zorder=100)
+        # Vertical line on primary axis (shared X-axis)
+        primary_axis = list(self.axes.values())[0]
+        self.crosshair_vline = primary_axis.axvline(event.xdata, color='red', linestyle='--', linewidth=0.8, alpha=0.8, zorder=100)
         
-        # Create horizontal line on the appropriate axis
-        if event.inaxes == self.axR:
-            self.crosshair_hline_right = self.axR.axhline(event.ydata, color='red', linestyle='--', linewidth=0.8, alpha=0.8, zorder=100)
-            self.crosshair_hline = None
-        else:
-            self.crosshair_hline = self.axL.axhline(event.ydata, color='red', linestyle='--', linewidth=0.8, alpha=0.8, zorder=100)
-            self.crosshair_hline_right = None
+        # Horizontal line on the axis where the mouse is
+        self.crosshair_hline = event.inaxes.axhline(event.ydata, color='red', linestyle='--', linewidth=0.8, alpha=0.8, zorder=100)
+        self.crosshair_hline_right = None
         
         self.canvas.draw_idle()
 
@@ -1226,144 +1585,173 @@ class InteractivePlotWindow(QMainWindow):
         self.save_current_settings()
 
     def plot(self):
-        # Save the axis title and labels
-        title = self.axL.get_title() if hasattr(self, 'axL') else ''
-        xlabel = self.axL.get_xlabel() if hasattr(self, 'axL') else ''
-        ylabel = self.axL.get_ylabel() if hasattr(self, 'axL') else ''
+        # Save the axis title and labels (from primary axis if exists)
+        title = ''
+        xlabel = ''
+        if hasattr(self, 'axes') and len(self.axes) > 0:
+            primary_axis = list(self.axes.values())[0]
+            title = primary_axis.get_title()
+            xlabel = primary_axis.get_xlabel()
 
-        if not self.initial_plot:
+        # Save axis limits before clearing
+        if not self.initial_plot and hasattr(self, 'axes'):
+            self.saved_xlims = {}
+            self.saved_ylims = {}
             try:
-                self.axLxlim = self.axL.get_xlim()
-                self.axLylim = self.axL.get_ylim()
-                if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
-                    self.axRxlim = self.axR.get_xlim()
-                    self.axRylim = self.axR.get_ylim()
+                for unit, axis in self.axes.items():
+                    self.saved_xlims[unit] = axis.get_xlim()
+                    self.saved_ylims[unit] = axis.get_ylim()
             except Exception:
                 pass
 
-        # Clear the axes
+        # Clear the figure
         self.fig.clear()
-        self.axL = self.fig.add_subplot(111)
-
-        # Set custom coordinate formatter on left axis
-        # NOTE: This will be overridden if we create a right axis (twinx), 
-        # so we must also set it on axR later
-        self.axL.format_coord = self._custom_format_coord
-
-        # Restore the axis title and labels
-        self.axL.set_title(title)
-        self.axL.set_xlabel(xlabel)
-        self.axL.set_ylabel(ylabel)
-
-        self.axL.grid(visible=True, which='major', axis='both', color='grey')
-        self.axL.grid(visible=True, which='minor', axis='both', color='lightgrey')
-        self.axL.tick_params(which='minor', labelcolor='lightgrey')
-        self.axL.tick_params(axis='x', rotation=90, which='both')
-        if self.df_axL_Title:
-            self.axL.set_ylabel(self.df_axL_Title)
-
-        # Generate a color cycle for all series (left + right)
-        # Use darker colors for better visibility on white background
-        import matplotlib.pyplot as plt
-        import matplotlib.colors as mcolors
-        total_series = len(self.df_axL.columns) + (len(self.df_axR.columns) if self.df_axR is not None and not self.df_axR.empty else 0)
         
-        # Create darker color palette by using Set1, Dark2, and tab10 which have more saturated colors
+        # Create axes for each unit
+        self.axes = {}
+        
+        # Generate color palette for all series
+        import matplotlib.pyplot as plt
+        total_series = len(self.df_data.columns)
+        
         if total_series <= 9:
             colors = [plt.cm.Set1(i) for i in range(total_series)]
         elif total_series <= 17:
             colors = [plt.cm.Set1(i % 9) for i in range(9)] + [plt.cm.Dark2(i % 8) for i in range(total_series - 9)]
         else:
-            # For more series, combine Set1, Dark2, and tab10
             colors = ([plt.cm.Set1(i % 9) for i in range(9)] + 
                      [plt.cm.Dark2(i % 8) for i in range(8)] +
                      [plt.cm.tab10(i % 10) for i in range(max(0, total_series - 17))])
+        
+        # Create primary axis for first unit
+        if len(self.unit_list) > 0:
+            first_unit = self.unit_list[0]
+            self.axes[first_unit] = self.fig.add_subplot(111)
+            self.axes[first_unit].format_coord = self._custom_format_coord
+            self.axes[first_unit].set_title(title)
+            self.axes[first_unit].set_xlabel(xlabel)
+            self.axes[first_unit].set_ylabel(first_unit)
+            self.axes[first_unit].grid(visible=True, which='major', axis='both', color='grey')
+            self.axes[first_unit].grid(visible=True, which='minor', axis='both', color='lightgrey')
+            self.axes[first_unit].tick_params(which='minor', labelcolor='lightgrey')
+            self.axes[first_unit].tick_params(axis='x', rotation=90, which='both')
+            
+            # Create twin axes for additional units
+            for i, unit in enumerate(self.unit_list[1:], 1):
+                self.axes[unit] = self.axes[first_unit].twinx()
+                self.axes[unit].format_coord = self._custom_format_coord
+                self.axes[unit].set_ylabel(unit)
+                
+                # Position spine for 3rd+ axes (offset from right edge)
+                if i > 1:
+                    self.axes[unit].spines['right'].set_position(('outward', 60 * (i - 1)))
+        
+        # Plot all series on their respective axes
+        all_cols = list(self.df_data.columns)
         color_index = 0
-
-        # Plot left-axis columns
-        for i, col in enumerate(self.df_axL.columns):
-            if self.series_visible[i]:
-                fmt = self.series_formats[i]
-                self.axL.plot(self.df_axL.index, self.df_axL[col], label=col, alpha=0.5, color=colors[color_index],
-                             linestyle=fmt['linestyle'], marker=fmt['marker'], markersize=fmt['markersize'])
-            color_index += 1
-
-        handles, labels = self.axL.get_legend_handles_labels()
-
-        # Reset right axis
-        self.axR = None
-        if self.df_axR is not None and not self.df_axR.empty:
-            self.axR = self.axL.twinx()
-            # CRITICAL: Set format_coord on axR too since it's on top and handles mouse events
-            self.axR.format_coord = self._custom_format_coord
+        handles_list = []
+        labels_list = []
+        
+        # Track which units have visible series
+        units_with_visible_series = set()
+        
+        # Track if we've added the separator after the first unit
+        separator_added = False
+        
+        for unit_idx, unit in enumerate(self.unit_list):
+            unit_cols = self.axis_groups[unit]
+            axis = self.axes[unit]
             
-            # Add separator between left and right axis series in legend
-            if handles:  # Only add separator if there are left axis items
-                from matplotlib.lines import Line2D
-                separator = Line2D([0], [0], color='none', label='─────────────')
-                handles.append(separator)
-                labels.append('─────────────')
-            
-            for i, col in enumerate(self.df_axR.columns, start=len(self.df_axL.columns)):
-                if self.series_visible[i]:
-                    # align on left x index (assumes same index or compatible)
-                    fmt = self.series_formats[i]
-                    self.axR.plot(self.df_axL.index, self.df_axR[col], label=col, alpha=0.5, color=colors[color_index],
-                                 linestyle=fmt['linestyle'], marker=fmt['marker'], markersize=fmt['markersize'])
+            unit_has_visible = False
+            for col in unit_cols:
+                series_idx = all_cols.index(col)
+                fmt = self.series_formats[series_idx]
+                if self.series_visible[series_idx]:
+                    line = axis.plot(self.df_data.index, self.df_data[col], label=col, alpha=0.5, 
+                                   color=colors[color_index],
+                                   linestyle=fmt['linestyle'], marker=fmt['marker'], 
+                                   markersize=fmt['markersize'])[0]
+                    handles_list.append(line)
+                    labels_list.append(col)
+                    unit_has_visible = True
                 color_index += 1
-            if self.df_axR_Title:
-                self.axR.set_ylabel(self.df_axR_Title)
+            
+            # Track if this unit has visible series
+            if unit_has_visible:
+                units_with_visible_series.add(unit)
+            
+            # Add separator only after the first unit (between left and right axes)
+            if unit_idx == 0 and len(self.unit_list) > 1 and not separator_added:
+                if len([h for h in handles_list if h.get_label() != '─────────────']) > 0:
+                    from matplotlib.lines import Line2D
+                    separator = Line2D([0], [0], color='none', label='─────────────')
+                    handles_list.append(separator)
+                    labels_list.append('─────────────')
+                    separator_added = True
+        
+        # Hide Y-axes for units with no visible series
+        for unit, axis in self.axes.items():
+            if unit not in units_with_visible_series:
+                # Hide the Y-axis
+                axis.yaxis.set_visible(False)
+                # Hide the spine
+                axis.spines['right'].set_visible(False)
+                if unit == self.unit_list[0]:  # Primary axis
+                    axis.spines['left'].set_visible(False)
+            else:
+                # Show the Y-axis
+                axis.yaxis.set_visible(True)
+                # Show the spine
+                if unit == self.unit_list[0]:  # Primary axis
+                    axis.spines['left'].set_visible(True)
+                else:
+                    axis.spines['right'].set_visible(True)
 
-            handles2, labels2 = self.axR.get_legend_handles_labels()
-            handles += handles2
-            labels += labels2
+        # Add legend with all handles to primary axis
+        # This ensures series from all axes (including twin axes) appear in the legend
+        if len(self.axes) > 0 and handles_list:
+            primary_axis = list(self.axes.values())[0]
+            primary_axis.legend(handles=handles_list, labels=labels_list)
 
-        self.axL.legend(handles, labels)
-
+        # Restore or set axis limits
         if self.initial_plot:
             self.initial_plot = False
             # If we have saved settings, use them
             if self.saved_settings:
                 try:
-                    # Restore axis limits
-                    self.axL.set_xlim(self.saved_settings['axLxlim'])
-                    self.axL.set_ylim(self.saved_settings['axLylim'])
-                    if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
-                        self.axR.set_xlim(self.saved_settings.get('axRxlim', self.saved_settings['axLxlim']))
-                        self.axR.set_ylim(self.saved_settings['axRylim'])
+                    # Restore axis limits for each unit
+                    for unit, axis in self.axes.items():
+                        xlim_key = f'xlim_{unit}'
+                        ylim_key = f'ylim_{unit}'
+                        if xlim_key in self.saved_settings:
+                            axis.set_xlim(self.saved_settings[xlim_key])
+                        if ylim_key in self.saved_settings:
+                            axis.set_ylim(self.saved_settings[ylim_key])
                 except Exception as e:
                     print(f"Warning: Could not restore all saved settings: {e}")
-                    self.axL.autoscale(axis='both')
+                    for axis in self.axes.values():
+                        axis.autoscale(axis='both')
             else:
-                self.axL.autoscale(axis='both')
-            
-            try:
-                self.axLxlim = self.axL.get_xlim()
-                self.axLylim = self.axL.get_ylim()
-                if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
-                    self.axRxlim = self.axR.get_xlim()
-                    self.axRylim = self.axR.get_ylim()
-            except Exception:
-                pass
+                for axis in self.axes.values():
+                    axis.autoscale(axis='both')
         else:
+            # Restore saved limits
             try:
-                self.axL.set_xlim(self.axLxlim)
-                self.axL.set_ylim(self.axLylim)
-                if self.df_axR is not None and not self.df_axR.empty and self.axR is not None:
-                    self.axR.set_xlim(self.axRxlim)
-                    self.axR.set_ylim(self.axRylim)
+                if hasattr(self, 'saved_xlims') and hasattr(self, 'saved_ylims'):
+                    for unit, axis in self.axes.items():
+                        if unit in self.saved_xlims:
+                            axis.set_xlim(self.saved_xlims[unit])
+                        if unit in self.saved_ylims:
+                            axis.set_ylim(self.saved_ylims[unit])
             except Exception:
                 pass
 
-        # Apply x-axis formatting to both axL and axR
+        # Apply x-axis formatting to all axes
         self.reformatXAxis()
         
         # CRITICAL: Re-apply the custom coordinate formatter after formatting
-        # The reformatXAxis() may reset format_coord, so we MUST set it again
-        # Set on BOTH axes since axR (if present) is on top and handles mouse events
-        self.axL.format_coord = self._custom_format_coord
-        if self.axR is not None:
-            self.axR.format_coord = self._custom_format_coord
+        for axis in self.axes.values():
+            axis.format_coord = self._custom_format_coord
         
         # Update toolbar labels
         if hasattr(self, 'toolbar'):
@@ -1499,26 +1887,23 @@ class InteractivePlotWindow(QMainWindow):
         return ax
 
     def reformatXAxis(self):
-        self.axL = self.apply_xaxis_formatting(self.axL)
-        if self.axR:
-            self.axR = self.apply_xaxis_formatting(self.axR)
+        for unit, axis in self.axes.items():
+            self.apply_xaxis_formatting(axis)
 
     def resetXAxis(self):
         """Reset X-axis to show all data with tight bounds (no margins)."""
         # Get the actual data range from the dataframe
-        if self.df_axL is not None and not self.df_axL.empty:
-            x_min = mdates.date2num(self.df_axL.index.min())
-            x_max = mdates.date2num(self.df_axL.index.max())
+        if self.df_data is not None and not self.df_data.empty:
+            x_min = mdates.date2num(self.df_data.index.min())
+            x_max = mdates.date2num(self.df_data.index.max())
             
-            # Set tight limits with no margin
-            self.axL.set_xlim(x_min, x_max)
-            if self.axR:
-                self.axR.set_xlim(x_min, x_max)
+            # Set tight limits with no margin on all axes
+            for axis in self.axes.values():
+                axis.set_xlim(x_min, x_max)
         else:
             # Fallback to autoscale if no data
-            self.axL.autoscale(axis='x')
-            if self.axR:
-                self.axR.autoscale(axis='x')
+            for axis in self.axes.values():
+                axis.autoscale(axis='x')
         
         self.reformatXAxis()
         self.canvas.draw()
@@ -1529,14 +1914,17 @@ class InteractivePlotWindow(QMainWindow):
     
     def zoom_in_x(self):
         """Zoom in on X-axis by 50% (keep Y-axis unchanged)."""
-        x_min, x_max = self.axL.get_xlim()
+        if not hasattr(self, 'axes') or len(self.axes) == 0:
+            return
+            
+        primary_axis = list(self.axes.values())[0]
+        x_min, x_max = primary_axis.get_xlim()
         x_center = (x_min + x_max) / 2
         x_range = x_max - x_min
         new_range = x_range * 0.5  # Zoom in by 50%
         
-        self.axL.set_xlim(x_center - new_range/2, x_center + new_range/2)
-        if self.axR:
-            self.axR.set_xlim(x_center - new_range/2, x_center + new_range/2)
+        for axis in self.axes.values():
+            axis.set_xlim(x_center - new_range/2, x_center + new_range/2)
         
         self.reformatXAxis()
         self.canvas.draw()
@@ -1546,15 +1934,19 @@ class InteractivePlotWindow(QMainWindow):
     
     def zoom_out_x(self):
         """Zoom out on X-axis by 50% (keep Y-axis unchanged)."""
-        x_min, x_max = self.axL.get_xlim()
+        if not hasattr(self, 'axes') or len(self.axes) == 0:
+            return
+            
+        primary_axis = list(self.axes.values())[0]
+        x_min, x_max = primary_axis.get_xlim()
         x_center = (x_min + x_max) / 2
         x_range = x_max - x_min
         new_range = x_range * 1.5  # Zoom out by 50%
         
         # Get data limits to prevent zooming out beyond data range
-        if self.df_axL is not None and not self.df_axL.empty:
-            data_min = mdates.date2num(self.df_axL.index.min())
-            data_max = mdates.date2num(self.df_axL.index.max())
+        if self.df_data is not None and not self.df_data.empty:
+            data_min = mdates.date2num(self.df_data.index.min())
+            data_max = mdates.date2num(self.df_data.index.max())
             
             new_x_min = max(data_min, x_center - new_range/2)
             new_x_max = min(data_max, x_center + new_range/2)
@@ -1562,9 +1954,8 @@ class InteractivePlotWindow(QMainWindow):
             new_x_min = x_center - new_range/2
             new_x_max = x_center + new_range/2
         
-        self.axL.set_xlim(new_x_min, new_x_max)
-        if self.axR:
-            self.axR.set_xlim(new_x_min, new_x_max)
+        for axis in self.axes.values():
+            axis.set_xlim(new_x_min, new_x_max)
         
         self.reformatXAxis()
         self.canvas.draw()
@@ -1719,13 +2110,11 @@ class InteractivePlotWindow(QMainWindow):
         self.draw_measure_marker(x_end, y_end, axis_end, is_start=False)
         
         # Determine which axis to draw the line on
-        # If both points are on the same axis, use that axis
-        # If different axes, draw on axL but we'll need to handle coordinate transformation
         if axis_start == axis_end:
             draw_axis = axis_start
         else:
-            # Mixed axes - draw on left axis for now
-            draw_axis = self.axL
+            # Mixed axes - use primary axis
+            draw_axis = list(self.axes.values())[0] if len(self.axes) > 0 else axis_start
         
         # Draw measurement line on the appropriate axis
         self.measure_line = draw_axis.plot([x_start, x_end], [y_start, y_end], 
@@ -1749,23 +2138,29 @@ class InteractivePlotWindow(QMainWindow):
         else:
             time_str = f"{total_seconds/86400:.2f} days"
         
-        # Calculate Y differences for both axes
-        # Get the Y-axis limits to convert between coordinate systems
-        y_start_left = axis_start.transData.transform((x_start, y_start))[1]
-        y_end_left = axis_end.transData.transform((x_end, y_end))[1]
+        # Format datetime strings
+        dt_start_str = dt_start.strftime('%Y-%m-%d %H:%M')
+        dt_end_str = dt_end.strftime('%Y-%m-%d %H:%M')
         
-        # Convert display coordinates back to data coordinates for each axis
-        y_start_left_data = axis_start.transData.inverted().transform((0, y_start_left))[1]
-        y_end_left_data = self.axL.transData.inverted().transform((0, y_end_left))[1]
+        # Build measurement text starting with time
+        measurement_lines = [f"ΔTime: {dt_end_str} - {dt_start_str} = {time_str}"]
         
-        y_start_right_data = self.axR.transData.inverted().transform((0, y_start_left))[1]
-        y_end_right_data = self.axR.transData.inverted().transform((0, y_end_left))[1]
+        # Calculate Y differences for all axes
+        # Get display coordinates for the measurement points
+        y_start_display = axis_start.transData.transform((x_start, y_start))[1]
+        y_end_display = axis_end.transData.transform((x_end, y_end))[1]
         
-        dy_left = y_end_left_data - y_start_left_data
-        dy_right = y_end_right_data - y_start_right_data
+        # Calculate delta Y for each axis/unit
+        for unit, axis in self.axes.items():
+            # Convert display coordinates back to this axis's data coordinates
+            y_start_data = axis.transData.inverted().transform((0, y_start_display))[1]
+            y_end_data = axis.transData.inverted().transform((0, y_end_display))[1]
+            dy = y_end_data - y_start_data
+            
+            # Add to measurement text with format: Δunit = y_end - y_start = delta
+            measurement_lines.append(f"Δ{unit} = {y_end_data:.2f} - {y_start_data:.2f} = {dy:.2f}")
         
-        # Build measurement text
-        measurement_text = f"ΔTime: {time_str}\nΔY(L): {dy_left:.2f}\nΔY(R): {dy_right:.2f}"
+        measurement_text = "\n".join(measurement_lines)
         
         # Add annotation at midpoint on the same axis as the line
         x_mid = (x_start + x_end) / 2
@@ -1789,36 +2184,21 @@ class InteractivePlotWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    # Load the DataFrame from the Excel file
-    # excel_file_path = 'c:\\Users\\secn17444\\OneDrive - WSP O365\\Projekt\\Växjö\\5142-10347420\\PST\\Arbetsmaterial\\Flöden till Örsled PST och regn\\Örsled_2021-10-19_-_2021-10_23_version_2_CNI_bara rådata.xlsm'
-    # df = pd.read_excel(excel_file_path, index_col='DateTime', parse_dates=True)
+    import pandas as pd
+    from InteractivePlotWindowMultiAxis import InteractivePlotWindowMultiAxis
 
-    # Path to your Excel file
-    excel_file_path = r'c:\Users\chrini\Documents\Projekt\Örsled PST\Flöden till Örsled PST och regn\Örsled_2021-10-19_-_2021-10_23_version_2_CNI_bara rådata.xlsm'  #Tidigare: c:\Users\secn17444\OneDrive - WSP O365\Projekt\Växjö\5142-10347420\PST\Arbetsmaterial\Flöden till Örsled PST och regn\Örsled_2021-10-19_-_2021-10_23_version_2_CNI_bara rådata.xlsm'
-
-    # Read the Excel file
-    df_axL = pd.read_excel(excel_file_path)
-    df_axL.drop(columns=['AP220 Wessels  [l/s]'], inplace=True)
-    # Convert 'date' column to datetime
-    df_axL['DateTime'] = pd.to_datetime(df_axL['DateTime'])
-
-    # Set 'date' column as the index
-    df_axL.set_index('DateTime', inplace=True)
-    
-    df_axL['Summaflöde till Örsled PST  [m3/h]'] = df_axL['AP247 Damsrydh [m³/h]']+df_axL['AP229 Stärkelsen  [m³/h]']+df_axL['AP220 Wessels  [m3/h]']
-
-    df_axR = pd.DataFrame(index=df_axL.index)
-    df_axR['Pumpsumpkumsum [m3]'] = df_axL['Summaflöde till Örsled PST  [m3/h]'].cumsum() - df_axL['ASRL02 Örsled PST till Sundets ARV [m3/h]'].cumsum()
-
-    dprint(df_axL.columns[:])
-    dprint(df_axR.columns[:])
-
+    # Create sample data
+    df = pd.DataFrame({
+        'Inflow [m3/h]': np.random.randn(100).cumsum(),
+        'Outflow [m3/h]': np.random.randn(100).cumsum(),
+        'Level [m]': np.random.randn(100).cumsum() + 10,
+        'Temperature [°C]': np.random.randn(100).cumsum() + 20,
+        'Pressure [kPa]': np.random.randn(100).cumsum() + 100
+        }, index=pd.date_range('2025-01-01', periods=100, freq='H'))
     app = QApplication(sys.argv)
-    mainWin = InteractivePlotWindow(df_axL = df_axL,
-                        df_axL_Title = 'Flöde [m3/h]', 
-                        df_axR = df_axR, 
-                        df_axR_Title = 'Kumsum volym [m³]',
-                        WindowTitle='Örsled PST')
+    mainWin = QMainWindow()
+
+    # Create window
+    mainWin = InteractivePlotWindowMultiAxis(df, WindowTitle="Multi-Unit Monitoring")
     mainWin.show()
-    sys.exit(app.exec())
     sys.exit(app.exec())

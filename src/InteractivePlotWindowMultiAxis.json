@@ -1,0 +1,200 @@
+﻿{
+    "auto_update": 1,
+    "series_formats": [
+        {
+            "series_name": "Inflöde Extenslam FT80101 [m3/h uncalibrated]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Inflöde Extenslam FT80101 [m3/h uncalibrated]_MA_1h",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Inflöde Extenslam FT80101 [m3/h uncalibrated]_MA_24h",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Inflöde Extenslam FT80101 [m3/h uncalibrated]_MA_7d",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Inflöde Extenslam FT80101 [m3/h]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "SlamPuckPoly FT92201 [l/h]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "SlamPuckPoly LT91201 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "SlamAvvatPoly LT91301 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "FlytSlam LT21101 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "SFÖverSlam LT71101 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "PuckS FT81101 [m3/h]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "SlamAvvattn FT82101 [m3/h]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Slamlager 1 LT81101 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Slamlager 2 LT82101 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Rejekt LT84101 [m]",
+            "visible": 0,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Inflöde Extenslam FT80101 [m3]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "FlytSlam LT21101 [m*m2]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "SFÖverSlam LT71101 [m*m2]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Slamlager 1 LT81101 [m*m2]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Slamlager 2 LT82101 [m*m2]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Rejekt LT84101 [m*m2]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        }
+    ],
+    "xlim_m3/h uncalibrated": [
+        20287.516927739383,
+        20300.12869049387
+    ],
+    "ylim_m3/h uncalibrated": [
+        0.0,
+        1.0
+    ],
+    "xlim_m3/h": [
+        20287.516927739383,
+        20300.12869049387
+    ],
+    "ylim_m3/h": [
+        -5.532810562451683,
+        104.51851736551203
+    ],
+    "xlim_l/h": [
+        20287.516927739383,
+        20300.12869049387
+    ],
+    "ylim_l/h": [
+        -1.5033283313115433,
+        31.366688910205358
+    ],
+    "xlim_m": [
+        20287.516927739383,
+        20300.12869049387
+    ],
+    "ylim_m": [
+        -0.050834771196047505,
+        1.0652563517940075
+    ],
+    "xlim_m3": [
+        20287.516927739383,
+        20300.12869049387
+    ],
+    "ylim_m3": [
+        763.3216886032593,
+        1023.7666295640095
+    ],
+    "xlim_m*m2": [
+        20287.516927739383,
+        20300.12869049387
+    ],
+    "ylim_m*m2": [
+        -7.726127743721006,
+        162.24868261814112
+    ]
+}

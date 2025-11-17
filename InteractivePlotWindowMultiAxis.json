@@ -1,0 +1,72 @@
+﻿{
+    "auto_update": 0,
+    "series_formats": [
+        {
+            "series_name": "Inflow [m3/h]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Outflow [m3/h]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Level [m]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Temperature [°C]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        },
+        {
+            "series_name": "Pressure [kPa]",
+            "visible": 1,
+            "linestyle": "-",
+            "marker": "",
+            "markersize": 3
+        }
+    ],
+    "xlim_m": [
+        20089.322265625,
+        20092.802734375
+    ],
+    "ylim_m": [
+        9.983599644598495,
+        11.131539656197829
+    ],
+    "xlim_kPa": [
+        20089.322265625,
+        20092.802734375
+    ],
+    "ylim_kPa": [
+        80.67102191376544,
+        114.78294469517336
+    ],
+    "xlim_m3/h": [
+        20089.322265625,
+        20092.802734375
+    ],
+    "ylim_m3/h": [
+        36.889767030199366,
+        55.88846483565893
+    ],
+    "xlim_°C": [
+        20089.322265625,
+        20092.802734375
+    ],
+    "ylim_°C": [
+        18.970198607491053,
+        26.3448926803784
+    ]
+}
