@@ -3164,5 +3164,306 @@
             -0.22002293800314282,
             4.6161671860516105
         ]
+    },
+    "Flöden och Flödesdiff (40 series)": {
+        "axLxlim": [
+            20400.587416314796,
+            20401.19566424797
+        ],
+        "axLylim": [
+            -1.2249765465218339,
+            137.9119832338483
+        ],
+        "auto_update": 0,
+        "series_formats": [
+            {
+                "series_name": "Inflöde FT10101 [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT10101 [m3/h]_MA_1h",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT10101 [m3/h]_MA_24h",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde FT10101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101 [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101 [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101 [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "MBBRflöde FT30101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT72101 [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT72101 [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT72101 [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde FT72101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101 [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101 [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101 [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Inflöde Extenslam FT80101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "PuckS FT81101 [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "PuckS FT81101 [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "PuckS FT81101 [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "PuckS FT81101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "SlamAvvattn FT82101 [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "SlamAvvattn FT82101 [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "SlamAvvattn FT82101 [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "SlamAvvattn FT82101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101 [m3/h]",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101 [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101 [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Utflöde Bräddning LT23101 [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Inflöde [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Inflöde [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Inflöde [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Inflöde [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Utflöde [m3/h]",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Utflöde [m3/h]_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Utflöde [m3/h]_MA_24h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Total Utflöde [m3/h]_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_1min",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_1h",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_24h",
+                "visible": 1,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            },
+            {
+                "series_name": "Diff_MA_7d",
+                "visible": 0,
+                "linestyle": "-",
+                "marker": "",
+                "markersize": 3
+            }
+        ],
+        "axRxlim": [
+            20400.587416314796,
+            20401.19566424797
+        ],
+        "axRylim": [
+            -0.799880777959723,
+            0.3880303944382202
+        ]
     }
 }

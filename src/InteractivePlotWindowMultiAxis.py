@@ -133,12 +133,12 @@ class ManualXAxisDialog(QDialog):
         self.setWindowTitle("Manual X-Axis Mode")
         self.combo = QComboBox(self)
         self.combo.addItems([
-            "Minute",
-            "Hour",
-            "Day",
-            "Week",
+            "Year",
             "Month",
-            "Year"
+            "Week",
+            "Day",
+            "Hour",
+            "Minute",
         ])
         if current_mode is not None:
             idx = self.combo.findText(current_mode)
@@ -156,16 +156,34 @@ class ManualXAxisDialog(QDialog):
         return self.combo.currentText()
 
 class SeriesFormatDialog(QDialog):
-    """Dialog for configuring series line style, marker, and marker size."""
-    def __init__(self, parent=None, series_name="", current_format=None):
+    """Dialog for configuring series line style, marker, marker size, and color."""
+    def __init__(self, parent=None, series_name="", current_format=None, current_color=None):
         super().__init__(parent)
         self.setWindowTitle(f"Format Series: {series_name}")
+        self.selected_color = current_color
         
         # Default values
         if current_format is None:
             current_format = {'linestyle': '-', 'marker': '', 'markersize': 3}
         
         layout = QVBoxLayout(self)
+        
+        # Color selection
+        from PyQt6.QtWidgets import QHBoxLayout
+        color_layout = QHBoxLayout()
+        color_layout.addWidget(QLabel("Color:"))
+        self.color_btn = QPushButton("Choose Color")
+        if current_color is not None:
+            # Convert RGBA tuple to hex for display
+            r = int(current_color[0] * 255)
+            g = int(current_color[1] * 255)
+            b = int(current_color[2] * 255)
+            color_hex = f'#{r:02x}{g:02x}{b:02x}'
+            self.color_btn.setStyleSheet(f"background-color: {color_hex}; color: white;")
+        self.color_btn.clicked.connect(self.choose_color)
+        color_layout.addWidget(self.color_btn)
+        color_layout.addStretch()
+        layout.addLayout(color_layout)
         
         # Line style selection
         layout.addWidget(QLabel("Line Style:"))
@@ -213,6 +231,26 @@ class SeriesFormatDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
     
+    def choose_color(self):
+        """Open color picker dialog."""
+        from PyQt6.QtWidgets import QColorDialog
+        from PyQt6.QtGui import QColor
+        
+        # Convert current color to QColor if available
+        initial_color = QColor(255, 255, 255)
+        if self.selected_color is not None:
+            r = int(self.selected_color[0] * 255)
+            g = int(self.selected_color[1] * 255)
+            b = int(self.selected_color[2] * 255)
+            initial_color = QColor(r, g, b)
+        
+        color = QColorDialog.getColor(initial_color, self, "Choose Series Color")
+        if color.isValid():
+            # Store as RGBA tuple (0-1 range) to match matplotlib format
+            self.selected_color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0, 1.0)
+            color_hex = f'#{color.red():02x}{color.green():02x}{color.blue():02x}'
+            self.color_btn.setStyleSheet(f"background-color: {color_hex}; color: white;")
+    
     def get_format(self):
         """Return selected format as dict."""
         linestyle_values = ['-', '--', '-.', ':', '']
@@ -223,6 +261,101 @@ class SeriesFormatDialog(QDialog):
             'marker': marker_values[self.marker_combo.currentIndex()],
             'markersize': self.markersize_spin.value()
         }
+    
+    def get_color(self):
+        """Return selected color as RGBA tuple."""
+        return self.selected_color
+
+
+class ReorderAxesDialog(QDialog):
+    """Dialog for reordering axes with move left/right/make primary buttons."""
+    def __init__(self, parent=None, unit_list=None):
+        super().__init__(parent)
+        self.setWindowTitle("Reorder Axes")
+        self.parent_window = parent
+        self.unit_list = unit_list if unit_list else []
+        
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Reorder axes by moving units left or right:"))
+        
+        # Create list widget with move buttons for each unit
+        from PyQt6.QtWidgets import QListWidget, QListWidgetItem, QHBoxLayout
+        self.list_widget = QListWidget()
+        self.list_widget.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        
+        # Populate list with units
+        self.refresh_list()
+        
+        layout.addWidget(self.list_widget)
+        
+        # Action buttons
+        button_layout = QHBoxLayout()
+        
+        self.move_left_btn = QPushButton("← Move Left")
+        self.move_left_btn.clicked.connect(self.move_left)
+        button_layout.addWidget(self.move_left_btn)
+        
+        self.move_right_btn = QPushButton("Move Right →")
+        self.move_right_btn.clicked.connect(self.move_right)
+        button_layout.addWidget(self.move_right_btn)
+        
+        self.make_primary_btn = QPushButton("⭐ Make Primary")
+        self.make_primary_btn.clicked.connect(self.make_primary)
+        button_layout.addWidget(self.make_primary_btn)
+        
+        layout.addLayout(button_layout)
+        
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+        
+        self.update_button_states()
+        self.list_widget.currentRowChanged.connect(self.update_button_states)
+    
+    def refresh_list(self):
+        """Refresh the list widget with current unit order."""
+        self.list_widget.clear()
+        for idx, unit in enumerate(self.unit_list):
+            if idx == 0:
+                self.list_widget.addItem(f"⭐ {unit} (Primary)")
+            else:
+                self.list_widget.addItem(f"   {unit}")
+    
+    def update_button_states(self):
+        """Enable/disable buttons based on selection."""
+        current_row = self.list_widget.currentRow()
+        self.move_left_btn.setEnabled(current_row > 0)
+        self.move_right_btn.setEnabled(0 <= current_row < len(self.unit_list) - 1)
+        self.make_primary_btn.setEnabled(current_row > 0)
+    
+    def move_left(self):
+        """Move selected unit left."""
+        current_row = self.list_widget.currentRow()
+        if current_row > 0:
+            unit = self.unit_list[current_row]
+            self.parent_window.reorder_unit(unit, -1)
+            self.refresh_list()
+            self.list_widget.setCurrentRow(current_row - 1)
+    
+    def move_right(self):
+        """Move selected unit right."""
+        current_row = self.list_widget.currentRow()
+        if 0 <= current_row < len(self.unit_list) - 1:
+            unit = self.unit_list[current_row]
+            self.parent_window.reorder_unit(unit, 1)
+            self.refresh_list()
+            self.list_widget.setCurrentRow(current_row + 1)
+    
+    def make_primary(self):
+        """Make selected unit the primary axis."""
+        current_row = self.list_widget.currentRow()
+        if current_row > 0:
+            unit = self.unit_list[current_row]
+            self.parent_window.move_unit_to_primary(unit)
+            self.refresh_list()
+            self.list_widget.setCurrentRow(0)
+
 
 class CustomNavigationToolbar(NavigationToolbar2QT):
     def __init__(self, canvas, parent=None, plot_window = None):
@@ -326,7 +459,7 @@ class CustomNavigationToolbar(NavigationToolbar2QT):
         
         # Get the first unit (primary/left axis)
         first_unit = self.plot_window.unit_list[0] if self.plot_window.unit_list else None
-        if not first_unit:
+        if not first_unit or first_unit not in self.plot_window.axes:
             return
             
         axis = self.plot_window.axes[first_unit]
@@ -379,6 +512,10 @@ class CustomNavigationToolbar(NavigationToolbar2QT):
         
         # Autoscale each right-side axis
         for unit in right_units:
+            # Skip units that don't have an axis (all series hidden)
+            if unit not in self.plot_window.axes:
+                continue
+                
             axis = self.plot_window.axes[unit]
             unit_cols = self.plot_window.axis_groups[unit]
             
@@ -524,6 +661,11 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         self.toggle_states = {unit: True for unit in self.unit_list}
         self.toggle_all_state = True  # State for toggle all button
 
+        # Persistent axis limits for all units (even when hidden)
+        # This ensures limits are preserved when axes are hidden/shown
+        self.unit_xlims = {}
+        self.unit_ylims = {}
+
         # Create central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -538,21 +680,41 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         # Determine columns and initial visibility
         all_cols = list(self.df_data.columns)
 
-        # Generate color palette for all series (same as used in plot())
+        # Generate default color palette for all series
         import matplotlib.pyplot as plt
         total_series = len(all_cols)
         
         if total_series <= 9:
-            self.series_colors = [plt.cm.Set1(i) for i in range(total_series)]
+            default_colors = [plt.cm.Set1(i) for i in range(total_series)]
         elif total_series <= 17:
-            self.series_colors = [plt.cm.Set1(i % 9) for i in range(9)] + [plt.cm.Dark2(i % 8) for i in range(total_series - 9)]
+            default_colors = [plt.cm.Set1(i % 9) for i in range(9)] + [plt.cm.Dark2(i % 8) for i in range(total_series - 9)]
         else:
-            self.series_colors = ([plt.cm.Set1(i % 9) for i in range(9)] + 
+            default_colors = ([plt.cm.Set1(i % 9) for i in range(9)] + 
                      [plt.cm.Dark2(i % 8) for i in range(8)] +
                      [plt.cm.tab10(i % 10) for i in range(max(0, total_series - 17))])
 
         # Try to load saved settings before setting up visibility and checkboxes
         self.saved_settings = load_plot_settings(self.settings_file)
+        
+        # Load saved axis limits for all units (including potentially hidden ones)
+        if self.saved_settings:
+            for unit in self.unit_list:
+                xlim_key = f'xlim_{unit}'
+                ylim_key = f'ylim_{unit}'
+                if xlim_key in self.saved_settings:
+                    self.unit_xlims[unit] = self.saved_settings[xlim_key]
+                if ylim_key in self.saved_settings:
+                    self.unit_ylims[unit] = self.saved_settings[ylim_key]
+        
+        # Load saved colors or use defaults
+        self.series_colors = []
+        saved_colors = self.saved_settings.get('series_colors', []) if self.saved_settings else []
+        for i in range(total_series):
+            if i < len(saved_colors) and saved_colors[i] is not None:
+                # Convert saved color (list) back to tuple
+                self.series_colors.append(tuple(saved_colors[i]))
+            else:
+                self.series_colors.append(default_colors[i])
         
         # Restore auto_update state from settings if available
         if self.saved_settings and 'auto_update' in self.saved_settings:
@@ -644,6 +806,14 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         self.crosshair_btn.clicked.connect(self.toggle_crosshair)
         control_layout.addWidget(self.crosshair_btn)
         
+        self.reorder_axes_btn = QPushButton("Reorder Axes")
+        self.reorder_axes_btn.clicked.connect(self.show_reorder_axes_dialog)
+        control_layout.addWidget(self.reorder_axes_btn)
+        
+        self.scale_m3_btn = QPushButton("Scale m³ to m*m²")
+        self.scale_m3_btn.clicked.connect(self.scale_m3_to_match_mm2)
+        control_layout.addWidget(self.scale_m3_btn)
+        
         control_layout.addStretch()
         
         layout.addLayout(control_layout)
@@ -673,8 +843,8 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
             if len(unit_cols) == 0:
                 continue
                 
-            # Calculate optimal number of rows for this unit
-            num_rows = calculate_optimal_rows(unit_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
+            # Calculate optimal number of rows for this unit using pixel width
+            num_rows = self._calculate_rows_by_pixel_width(unit_cols, available_width_per_column=400)
             num_cols = math.ceil(len(unit_cols) / num_rows)
             
             # Get color scheme for this unit (cycle through colors)
@@ -818,6 +988,11 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         if not hasattr(self, 'axes'):
             return
         
+        # Update unit_xlims and unit_ylims with current visible axes
+        for unit, axis in self.axes.items():
+            self.unit_xlims[unit] = list(axis.get_xlim())
+            self.unit_ylims[unit] = list(axis.get_ylim())
+        
         # Build series_formats with names and visibility for readability
         all_cols = list(self.df_data.columns)
         
@@ -839,16 +1014,23 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
                 if key not in ordered:
                     ordered[key] = value
             series_formats_with_names.append(ordered)
+        
+        # Save series colors as lists (tuples aren't JSON serializable)
+        series_colors_list = [list(color) if color is not None else None for color in self.series_colors]
             
         settings = {
             'auto_update': self.auto_update,
-            'series_formats': series_formats_with_names
+            'series_formats': series_formats_with_names,
+            'series_colors': series_colors_list
         }
         
-        # Save axis limits for each unit
-        for unit, axis in self.axes.items():
-            settings[f'xlim_{unit}'] = list(axis.get_xlim())
-            settings[f'ylim_{unit}'] = list(axis.get_ylim())
+        # Save axis limits for ALL units (including hidden ones)
+        # Use persistent dictionaries that maintain limits even when axes are hidden
+        for unit in self.unit_list:
+            if unit in self.unit_xlims:
+                settings[f'xlim_{unit}'] = self.unit_xlims[unit]
+            if unit in self.unit_ylims:
+                settings[f'ylim_{unit}'] = self.unit_ylims[unit]
             
         save_plot_settings(settings, self.settings_file)
 
@@ -858,6 +1040,95 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         g = int(rgba_tuple[1] * 255)
         b = int(rgba_tuple[2] * 255)
         return f'#{r:02x}{g:02x}{b:02x}'
+
+    def _update_checkbox_colors(self):
+        """Update checkbox border colors to match current series_colors after reordering."""
+        all_cols = list(self.df_data.columns)
+        
+        # Find which unit each series belongs to for text color
+        unit_colors = [
+            ('#e8f4f8', '#0066cc', '#003366'),  # Blue
+            ('#f8e8f8', '#cc0066', '#660033'),  # Pink/Magenta
+            ('#e8f8e8', '#00cc66', '#006633'),  # Green
+            ('#f8f4e8', '#cc6600', '#663300'),  # Orange
+            ('#f0e8f8', '#6600cc', '#330066'),  # Purple
+            ('#e8f8f4', '#00cccc', '#006666'),  # Cyan
+        ]
+        
+        for i, checkbox in enumerate(self.checkboxes):
+            if i < len(all_cols) and i < len(self.series_colors):
+                col = all_cols[i]
+                series_color_hex = self._rgba_to_hex(self.series_colors[i])
+                
+                # Find which unit this series belongs to
+                unit = self.series_units.get(col, 'default')
+                unit_idx = self.unit_list.index(unit) if unit in self.unit_list else 0
+                bg_color, border_color, text_color = unit_colors[unit_idx % len(unit_colors)]
+                
+                # Update the checkbox stylesheet with the correct series color
+                checkbox.setStyleSheet(f"""
+                    QCheckBox {{ 
+                        background-color: transparent; 
+                        color: {text_color};
+                        spacing: 5px;
+                    }}
+                    QCheckBox::indicator {{
+                        width: 13px;
+                        height: 13px;
+                        border: 2px solid {series_color_hex};
+                        border-radius: 3px;
+                        background-color: white;
+                    }}
+                    QCheckBox::indicator:checked {{
+                        background-color: {series_color_hex};
+                        border: 2px solid {series_color_hex};
+                    }}
+                """)
+
+    def _calculate_rows_by_pixel_width(self, series_names, available_width_per_column=500):
+        """Calculate optimal rows based on estimated pixel width of labels.
+        
+        Args:
+            series_names: List of series names to display
+            available_width_per_column: Target width per column in pixels (default 400)
+        
+        Returns:
+            Number of rows needed (constrained between 2 and 6)
+        """
+        from PyQt6.QtGui import QFontMetrics
+        from PyQt6.QtWidgets import QApplication
+        
+        # Get default font metrics
+        font = QApplication.font()
+        metrics = QFontMetrics(font)
+        
+        # Estimate width for each series name (checkbox + padding + text)
+        total_width = 0
+        max_width = 0
+        for name in series_names:
+            # 20px for checkbox, 10px spacing, text width, 20px right padding
+            text_width = metrics.horizontalAdvance(name)
+            item_width = 20 + 10 + text_width + 20
+            total_width += item_width
+            max_width = max(max_width, item_width)
+        
+        # Calculate how many columns we can fit
+        # Start by assuming we want items around available_width_per_column wide
+        estimated_columns = max(1, int(total_width / (available_width_per_column * len(series_names))))
+        estimated_columns = max(1, estimated_columns)
+        
+        # Calculate rows needed for this number of columns
+        import math
+        calculated_rows = math.ceil(len(series_names) / estimated_columns)
+        
+        # If we have very long labels, ensure we don't make rows too tall
+        # by limiting columns if a single item is very wide
+        if max_width > available_width_per_column * 1.5:
+            # Force more rows to accommodate wide labels
+            calculated_rows = max(calculated_rows, 4)
+        
+        # Constrain to reasonable range
+        return max(2, min(6, calculated_rows))
 
     def create_toggle_function(self, index):
         # Accept the state argument from stateChanged signal and set the visibility directly.
@@ -875,14 +1146,21 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         def show_format_dialog(pos):
             from PyQt6.QtWidgets import QMenu
             menu = QMenu()
-            format_action = menu.addAction("Format Line/Marker...")
+            format_action = menu.addAction("Format Line/Marker/Color...")
             action = menu.exec(self.checkboxes[index].mapToGlobal(pos))
             
             if action == format_action:
-                # Show format dialog
-                dlg = SeriesFormatDialog(self, series_name, self.series_formats[index])
+                # Show format dialog with current color
+                current_color = self.series_colors[index] if index < len(self.series_colors) else None
+                dlg = SeriesFormatDialog(self, series_name, self.series_formats[index], current_color)
                 if dlg.exec() == QDialog.DialogCode.Accepted:
                     self.series_formats[index] = dlg.get_format()
+                    # Update color if changed
+                    new_color = dlg.get_color()
+                    if new_color is not None and index < len(self.series_colors):
+                        self.series_colors[index] = new_color
+                    # Update checkbox color immediately
+                    self._update_checkbox_colors()
                     if self.auto_update:
                         self.plot()
                         self.save_current_settings()
@@ -922,7 +1200,112 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         elif action == make_primary_action:
             self.move_unit_to_primary(unit)
     
+    def show_reorder_axes_dialog(self):
+        """Show dialog for reordering axes."""
+        dialog = ReorderAxesDialog(self, self.unit_list)
+        dialog.exec()
+    
+    def scale_m3_to_match_mm2(self):
+        """Scale the [m3] axis to have the same range as [m*m2] axis, starting from minimum visible value."""
+        from PyQt6.QtWidgets import QMessageBox
+        m3_unit = 'm3'
+        mm2_unit = 'm*m2'
+        message_lines = []
+        message_lines.append(f"=== Scaling {m3_unit} axis to match {mm2_unit} axis ===\n")
+
+        # Show all available axes and their names
+        axes_keys = list(self.axes.keys())
+        axes_keys_str = ', '.join([repr(k) for k in axes_keys])
+        message_lines.append(f"Available axes: {axes_keys_str}\n")
+
+        # Try to match axis names robustly (case/whitespace-insensitive)
+        def normalize(s):
+            return s.replace(' ', '').replace('\u200b', '').lower() if isinstance(s, str) else s
+
+        axes_map = {normalize(k): k for k in axes_keys}
+        m3_key = axes_map.get(normalize(m3_unit))
+        mm2_key = axes_map.get(normalize(mm2_unit))
+
+        if not m3_key or not mm2_key:
+            error_msg = f"ERROR: Cannot scale - could not find both '{m3_unit}' and '{mm2_unit}' axes.\n"
+            error_msg += f"Available axes: {axes_keys_str}\n"
+            QMessageBox.warning(self, "Scaling Error", error_msg)
+            print(error_msg)
+            return
+
+        m3_axis = self.axes[m3_key]
+        mm2_axis = self.axes[mm2_key]
+        
+        # Get the axes
+        m3_axis = self.axes[m3_unit]
+        mm2_axis = self.axes[mm2_unit]
+        
+        # Get current limits before scaling
+        m3_ymin_old, m3_ymax_old = m3_axis.get_ylim()
+        m3_range_old = m3_ymax_old - m3_ymin_old
+        message_lines.append("BEFORE scaling:")
+        message_lines.append(f"  {m3_unit} axis: min={m3_ymin_old:.2f}, max={m3_ymax_old:.2f}, range={m3_range_old:.2f}")
+        
+        # Get current limits of mm2 axis (this is the reference)
+        mm2_ymin, mm2_ymax = mm2_axis.get_ylim()
+        mm2_range = mm2_ymax - mm2_ymin
+        message_lines.append(f"  {mm2_unit} axis: min={mm2_ymin:.2f}, max={mm2_ymax:.2f}, range={mm2_range:.2f}\n")
+        
+        # Find minimum value in visible m3 series
+        all_cols = list(self.df_data.columns)
+        m3_cols = self.axis_groups[m3_unit]
+        
+        m3_min = float('inf')
+        has_visible_data = False
+        
+        for col in m3_cols:
+            series_idx = all_cols.index(col)
+            if self.series_visible[series_idx]:
+                # Get visible data (considering current x-axis limits)
+                xlim = m3_axis.get_xlim()
+                xlim_dt = [mdates.num2date(x).replace(tzinfo=None) for x in xlim]
+                mask = (self.df_data.index >= xlim_dt[0]) & (self.df_data.index <= xlim_dt[1])
+                visible_data = self.df_data.loc[mask, col].dropna()
+                
+                if len(visible_data) > 0:
+                    has_visible_data = True
+                    col_min = visible_data.min()
+                    message_lines.append(f"  Series '{col}': min={col_min:.2f}")
+                    m3_min = min(m3_min, col_min)
+        
+        if not has_visible_data:
+            error_msg = f"ERROR: No visible data in {m3_unit} series"
+            QMessageBox.warning(self, "Scaling Error", error_msg)
+            print(error_msg)
+            return
+        
+        message_lines.append(f"\nMinimum value across all visible {m3_unit} series: {m3_min:.2f}\n")
+        
+        # Set m3 axis limits: start at minimum value, span same range as mm2
+        m3_ymin = m3_min
+        m3_ymax = m3_ymin + mm2_range
+        
+        message_lines.append("AFTER scaling:")
+        message_lines.append(f"  {m3_unit} axis: min={m3_ymin:.2f}, max={m3_ymax:.2f}, range={mm2_range:.2f}")
+        message_lines.append(f"  {mm2_unit} axis: min={mm2_ymin:.2f}, max={mm2_ymax:.2f}, range={mm2_range:.2f} (unchanged)\n")
+        message_lines.append(f"✓ Both axes now have the same range: {mm2_range:.2f}")
+        
+        m3_axis.set_ylim(m3_ymin, m3_ymax)
+        
+        # Update persistent limits
+        self.unit_ylims[m3_unit] = [m3_ymin, m3_ymax]
+        
+        # Redraw and save
+        self.canvas.draw()
+        self.save_current_settings()
+        
+        # Show success message
+        full_message = "\n".join(message_lines)
+        print(full_message)
+        QMessageBox.information(self, "Scaling Complete", full_message)
+    
     def show_axis_context_menu(self, global_pos, unit):
+
         """Show context menu when right-clicking on an axis in the plot area."""
         from PyQt6.QtWidgets import QMenu
         menu = QMenu()
@@ -1039,8 +1422,8 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
             if len(unit_cols) == 0:
                 continue
                 
-            # Calculate optimal number of rows for this unit
-            num_rows = calculate_optimal_rows(unit_cols, max_chars_per_row=180, min_rows=2, max_rows=4)
+            # Calculate optimal number of rows for this unit using pixel width
+            num_rows = self._calculate_rows_by_pixel_width(unit_cols, available_width_per_column=400)
             num_cols = math.ceil(len(unit_cols) / num_rows)
             
             # Get color scheme for this unit (cycle through colors)
@@ -1136,6 +1519,10 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         
         # Replot with new axis order
         self.plot()
+        
+        # Update checkbox colors to match new plot colors
+        self._update_checkbox_colors()
+        
         self.save_current_settings()
     
     def _clear_layout(self, layout):
@@ -1190,13 +1577,22 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
     def clear_crosshair(self):
         """Remove crosshair lines from the plot."""
         if self.crosshair_vline is not None:
-            self.crosshair_vline.remove()
+            try:
+                self.crosshair_vline.remove()
+            except ValueError:
+                pass
             self.crosshair_vline = None
         if self.crosshair_hline is not None:
-            self.crosshair_hline.remove()
+            try:
+                self.crosshair_hline.remove()
+            except ValueError:
+                pass
             self.crosshair_hline = None
         if self.crosshair_hline_right is not None:
-            self.crosshair_hline_right.remove()
+            try:
+                self.crosshair_hline_right.remove()
+            except ValueError:
+                pass
             self.crosshair_hline_right = None
         self.canvas.draw_idle()
 
@@ -1251,6 +1647,10 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
             
             # For each unit with visible series, calculate its Y coordinate
             for unit in self.unit_list:
+                # Skip units that don't have an axis (all series hidden)
+                if unit not in self.axes:
+                    continue
+                    
                 axis = self.axes[unit]
                 
                 # Check if this unit has any visible series
@@ -1287,72 +1687,60 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         else:
             return f"x={xstr}  y={y:.2f}"
 
+    def make_format_coord(self, calling_axis, calling_unit):
+        def _format_coord(x, y):
+            import matplotlib.dates as mdates
+            # Format X coordinate as YYYY-MM-DD HH:MM
+            try:
+                dt = mdates.num2date(x)
+                if dt.tzinfo is not None:
+                    dt = dt.replace(tzinfo=None)
+                xstr = dt.strftime('%Y-%m-%d %H:%M')
+            except Exception:
+                xstr = f"{x:.2f}"
+
+            y_parts = []
+            for unit, axis in self.axes.items():
+                # Only show units with visible series
+                unit_has_visible = False
+                unit_cols = self.axis_groups[unit]
+                all_cols = list(self.df_data.columns)
+                for col in unit_cols:
+                    series_idx = all_cols.index(col)
+                    if series_idx < len(self.series_visible) and self.series_visible[series_idx]:
+                        unit_has_visible = True
+                        break
+                if not unit_has_visible:
+                    continue
+
+                try:
+                    if axis == calling_axis:
+                        y_val = y
+                    else:
+                        # Transform: data coords from calling_axis -> display -> data coords in this axis
+                        display_point = calling_axis.transData.transform((x, y))
+                        data_point = axis.transData.inverted().transform(display_point)
+                        y_val = data_point[1]
+                    y_parts.append(f"{unit}={y_val:.2f}")
+                except Exception:
+                    pass
+
+            if y_parts:
+                return f"x={xstr}  {' | '.join(y_parts)}"
+            else:
+                return f"x={xstr}  y={y:.2f}"
+        return _format_coord
+
     def on_mouse_press(self, event):
         """Handle mouse button press - start drawing crosshair or set measurement point."""
         if event.inaxes not in list(self.axes.values()) or event.xdata is None or event.ydata is None:
             return
         
-        # Handle right-click on axes to show unit reordering menu
-        if event.button == 3:  # Right mouse button
-            # Find which unit this axis belongs to
-            clicked_unit = None
-            for unit, axis in self.axes.items():
-                if event.inaxes == axis:
-                    clicked_unit = unit
-                    break
-            
-            if clicked_unit:
-                # Show a context menu with the unit name prominently displayed
-                from PyQt6.QtCore import QPoint
-                from PyQt6.QtWidgets import QMenu
-                
-                # Convert matplotlib event coordinates to global screen coordinates
-                canvas_pos = self.canvas.mapToGlobal(self.canvas.pos())
-                pixel_coords = event.inaxes.transData.transform((event.xdata, event.ydata))
-                canvas_height = self.canvas.height()
-                screen_x = int(canvas_pos.x() + pixel_coords[0])
-                screen_y = int(canvas_pos.y() + (canvas_height - pixel_coords[1]))
-                
-                # Create menu with unit indicator
-                menu = QMenu()
-                menu.setStyleSheet("QMenu { font-size: 11pt; }")
-                
-                # Add header showing which axis was clicked
-                header = menu.addAction(f"📊 Axis: {clicked_unit}")
-                header.setEnabled(False)
-                menu.addSeparator()
-                
-                current_idx = self.unit_list.index(clicked_unit)
-                
-                # Add menu options
-                move_left_action = None
-                move_right_action = None
-                make_primary_action = None
-                
-                if current_idx > 0:
-                    move_left_action = menu.addAction(f"← Move '{clicked_unit}' Left")
-                    
-                if current_idx < len(self.unit_list) - 1:
-                    move_right_action = menu.addAction(f"Move '{clicked_unit}' Right →")
-                
-                if len(self.unit_list) > 1 and current_idx > 0:
-                    menu.addSeparator()
-                    make_primary_action = menu.addAction(f"⭐ Make '{clicked_unit}' Primary Axis (Left)")
-                
-                # Show menu and handle action
-                action = menu.exec(QPoint(screen_x, screen_y))
-                
-                if action == move_left_action:
-                    self.reorder_unit(clicked_unit, -1)
-                elif action == move_right_action:
-                    self.reorder_unit(clicked_unit, 1)
-                elif action == make_primary_action:
-                    self.move_unit_to_primary(clicked_unit)
-            return
-        
         # Handle measurement mode
         if self.measure_enabled:
             if self.measure_start_point is None:
+                # Start a new measurement: clear any previous graphics
+                self.clear_measurement()                
                 # First click - set start point
                 self.measure_start_point = (event.xdata, event.ydata, event.inaxes)
                 self.draw_measure_marker(event.xdata, event.ydata, event.inaxes, is_start=True)
@@ -1397,11 +1785,23 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         
         # Remove old crosshair lines if they exist
         if self.crosshair_vline is not None:
-            self.crosshair_vline.remove()
+            try:
+                self.crosshair_vline.remove()
+            except ValueError:
+                pass
+            self.crosshair_vline = None
         if self.crosshair_hline is not None:
-            self.crosshair_hline.remove()
+            try:
+                self.crosshair_hline.remove()
+            except ValueError:
+                pass
+            self.crosshair_hline = None
         if self.crosshair_hline_right is not None:
-            self.crosshair_hline_right.remove()
+            try:
+                self.crosshair_hline_right.remove()
+            except ValueError:
+                pass
+            self.crosshair_hline_right = None
         
         # Create new crosshair lines at current position
         # Vertical line on primary axis (shared X-axis)
@@ -1583,7 +1983,7 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         
         self.plot()
         self.save_current_settings()
-
+    
     def plot(self):
         # Save the axis title and labels (from primary axis if exists)
         title = ''
@@ -1595,14 +1995,10 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
 
         # Save axis limits before clearing
         if not self.initial_plot and hasattr(self, 'axes'):
-            self.saved_xlims = {}
-            self.saved_ylims = {}
-            try:
-                for unit, axis in self.axes.items():
-                    self.saved_xlims[unit] = axis.get_xlim()
-                    self.saved_ylims[unit] = axis.get_ylim()
-            except Exception:
-                pass
+            # Save current axis limits to persistent dictionaries
+            for unit, axis in self.axes.items():
+                self.unit_xlims[unit] = axis.get_xlim()
+                self.unit_ylims[unit] = axis.get_ylim()
 
         # Clear the figure
         self.fig.clear()
@@ -1610,75 +2006,80 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         # Create axes for each unit
         self.axes = {}
         
-        # Generate color palette for all series
-        import matplotlib.pyplot as plt
-        total_series = len(self.df_data.columns)
+        # Use stored series colors (already loaded from settings or defaults)
+        # No need to regenerate colors here
         
-        if total_series <= 9:
-            colors = [plt.cm.Set1(i) for i in range(total_series)]
-        elif total_series <= 17:
-            colors = [plt.cm.Set1(i % 9) for i in range(9)] + [plt.cm.Dark2(i % 8) for i in range(total_series - 9)]
-        else:
-            colors = ([plt.cm.Set1(i % 9) for i in range(9)] + 
-                     [plt.cm.Dark2(i % 8) for i in range(8)] +
-                     [plt.cm.tab10(i % 10) for i in range(max(0, total_series - 17))])
+        # Pre-determine which units have visible series
+        all_cols = list(self.df_data.columns)
+        units_with_visible_series = set()
+        for unit in self.unit_list:
+            unit_cols = self.axis_groups[unit]
+            for col in unit_cols:
+                series_idx = all_cols.index(col)
+                if self.series_visible[series_idx]:
+                    units_with_visible_series.add(unit)
+                    break  # Found at least one visible series in this unit
         
-        # Create primary axis for first unit
+        # Create axes only for units with visible series
         if len(self.unit_list) > 0:
-            first_unit = self.unit_list[0]
-            self.axes[first_unit] = self.fig.add_subplot(111)
-            self.axes[first_unit].format_coord = self._custom_format_coord
-            self.axes[first_unit].set_title(title)
-            self.axes[first_unit].set_xlabel(xlabel)
-            self.axes[first_unit].set_ylabel(first_unit)
-            self.axes[first_unit].grid(visible=True, which='major', axis='both', color='grey')
-            self.axes[first_unit].grid(visible=True, which='minor', axis='both', color='lightgrey')
-            self.axes[first_unit].tick_params(which='minor', labelcolor='lightgrey')
-            self.axes[first_unit].tick_params(axis='x', rotation=90, which='both')
+            # Get list of units that actually need axes
+            visible_units = [unit for unit in self.unit_list if unit in units_with_visible_series]
             
-            # Create twin axes for additional units
-            for i, unit in enumerate(self.unit_list[1:], 1):
-                self.axes[unit] = self.axes[first_unit].twinx()
-                self.axes[unit].format_coord = self._custom_format_coord
-                self.axes[unit].set_ylabel(unit)
+            if len(visible_units) > 0:
+                # Create primary axis for first visible unit
+                first_unit = visible_units[0]
+                self.axes[first_unit] = self.fig.add_subplot(111)
+                # self.axes[first_unit].format_coord = self._custom_format_coord
+                self.axes[first_unit].format_coord = self.make_format_coord(self.axes[first_unit], first_unit)
+                self.axes[first_unit].set_title(title)
+                self.axes[first_unit].set_xlabel(xlabel)
+                self.axes[first_unit].set_ylabel(first_unit)
+                self.axes[first_unit].grid(visible=True, which='major', axis='both', color='grey')
+                self.axes[first_unit].grid(visible=True, which='minor', axis='both', color='lightgrey')
+                self.axes[first_unit].tick_params(which='minor', labelcolor='lightgrey')
+                self.axes[first_unit].tick_params(axis='x', rotation=90, which='both')
                 
-                # Position spine for 3rd+ axes (offset from right edge)
-                if i > 1:
-                    self.axes[unit].spines['right'].set_position(('outward', 60 * (i - 1)))
+                # Create twin axes only for additional visible units
+                for i, unit in enumerate(visible_units[1:], 1):
+                    self.axes[unit] = self.axes[first_unit].twinx()
+                    # self.axes[unit].format_coord = self._custom_format_coord
+                    self.axes[unit].format_coord = self.make_format_coord(self.axes[unit], unit)
+                    self.axes[unit].set_ylabel(unit)
+                    
+                    # Position spine for 2nd+ visible axes (offset from right edge)
+                    if i > 1:
+                        self.axes[unit].spines['right'].set_position(('outward', 60 * (i - 1)))
         
         # Plot all series on their respective axes
-        all_cols = list(self.df_data.columns)
-        color_index = 0
         handles_list = []
         labels_list = []
-        
-        # Track which units have visible series
-        units_with_visible_series = set()
         
         # Track if we've added the separator after the first unit
         separator_added = False
         
         for unit_idx, unit in enumerate(self.unit_list):
+            # Skip units that don't have an axis (no visible series)
+            if unit not in self.axes:
+                continue
+                
             unit_cols = self.axis_groups[unit]
             axis = self.axes[unit]
             
-            unit_has_visible = False
             for col in unit_cols:
                 series_idx = all_cols.index(col)
                 fmt = self.series_formats[series_idx]
+                
+                # Use stored color from self.series_colors
+                # This ensures consistent colors that persist across reorderings and restarts
+                series_color = self.series_colors[series_idx] if series_idx < len(self.series_colors) else (0, 0, 0, 1)
+                
                 if self.series_visible[series_idx]:
                     line = axis.plot(self.df_data.index, self.df_data[col], label=col, alpha=0.5, 
-                                   color=colors[color_index],
+                                   color=series_color,
                                    linestyle=fmt['linestyle'], marker=fmt['marker'], 
                                    markersize=fmt['markersize'])[0]
                     handles_list.append(line)
                     labels_list.append(col)
-                    unit_has_visible = True
-                color_index += 1
-            
-            # Track if this unit has visible series
-            if unit_has_visible:
-                units_with_visible_series.add(unit)
             
             # Add separator only after the first unit (between left and right axes)
             if unit_idx == 0 and len(self.unit_list) > 1 and not separator_added:
@@ -1688,24 +2089,6 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
                     handles_list.append(separator)
                     labels_list.append('─────────────')
                     separator_added = True
-        
-        # Hide Y-axes for units with no visible series
-        for unit, axis in self.axes.items():
-            if unit not in units_with_visible_series:
-                # Hide the Y-axis
-                axis.yaxis.set_visible(False)
-                # Hide the spine
-                axis.spines['right'].set_visible(False)
-                if unit == self.unit_list[0]:  # Primary axis
-                    axis.spines['left'].set_visible(False)
-            else:
-                # Show the Y-axis
-                axis.yaxis.set_visible(True)
-                # Show the spine
-                if unit == self.unit_list[0]:  # Primary axis
-                    axis.spines['left'].set_visible(True)
-                else:
-                    axis.spines['right'].set_visible(True)
 
         # Add legend with all handles to primary axis
         # This ensures series from all axes (including twin axes) appear in the legend
@@ -1716,42 +2099,55 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         # Restore or set axis limits
         if self.initial_plot:
             self.initial_plot = False
-            # If we have saved settings, use them
-            if self.saved_settings:
-                try:
-                    # Restore axis limits for each unit
-                    for unit, axis in self.axes.items():
-                        xlim_key = f'xlim_{unit}'
-                        ylim_key = f'ylim_{unit}'
-                        if xlim_key in self.saved_settings:
-                            axis.set_xlim(self.saved_settings[xlim_key])
-                        if ylim_key in self.saved_settings:
-                            axis.set_ylim(self.saved_settings[ylim_key])
-                except Exception as e:
-                    print(f"Warning: Could not restore all saved settings: {e}")
-                    for axis in self.axes.values():
+            # Use saved limits from settings or autoscale
+            for unit, axis in self.axes.items():
+                if unit in self.unit_xlims and unit in self.unit_ylims:
+                    try:
+                        axis.set_xlim(self.unit_xlims[unit])
+                        axis.set_ylim(self.unit_ylims[unit])
+                    except Exception as e:
+                        print(f"Warning: Could not restore limits for {unit}: {e}")
                         axis.autoscale(axis='both')
-            else:
-                for axis in self.axes.values():
+                else:
                     axis.autoscale(axis='both')
         else:
-            # Restore saved limits
-            try:
-                if hasattr(self, 'saved_xlims') and hasattr(self, 'saved_ylims'):
-                    for unit, axis in self.axes.items():
-                        if unit in self.saved_xlims:
-                            axis.set_xlim(self.saved_xlims[unit])
-                        if unit in self.saved_ylims:
-                            axis.set_ylim(self.saved_ylims[unit])
-            except Exception:
-                pass
+            # Restore from persistent dictionaries (handles hidden axes correctly)
+            # Get x-limits from first available unit with saved limits
+            shared_xlim = None
+            for unit in self.unit_list:
+                if unit in self.unit_xlims:
+                    shared_xlim = self.unit_xlims[unit]
+                    break
+            
+            for unit, axis in self.axes.items():
+                # X-axis is shared, so use the same x-limits for all axes
+                if shared_xlim is not None:
+                    try:
+                        axis.set_xlim(shared_xlim)
+                    except Exception:
+                        pass
+                elif unit in self.unit_xlims:
+                    try:
+                        axis.set_xlim(self.unit_xlims[unit])
+                    except Exception:
+                        pass
+                
+                # Y-axis limits are per-unit
+                if unit in self.unit_ylims:
+                    try:
+                        axis.set_ylim(self.unit_ylims[unit])
+                    except Exception:
+                        pass
+                else:
+                    # Only autoscale Y-axis for new units without saved limits
+                    axis.autoscale(axis='y', enable=True)
 
         # Apply x-axis formatting to all axes
         self.reformatXAxis()
         
         # CRITICAL: Re-apply the custom coordinate formatter after formatting
-        for axis in self.axes.values():
-            axis.format_coord = self._custom_format_coord
+        # for axis in self.axes.values(): # Not used since switching from self.axes[unit].format_coord = self._custom_format_coord to self.axes[unit].format_coord = self.make_format_coord(self.axes[unit], unit)
+        #     axis.format_coord = self._custom_format_coord
         
         # Update toolbar labels
         if hasattr(self, 'toolbar'):
@@ -1994,31 +2390,54 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
     
     def clear_measurement(self):
         """Clear all measurement graphics."""
-        if self.measure_line is not None:
-            self.measure_line.remove()
+        if hasattr(self, 'measure_line') and self.measure_line is not None:
+            try:
+                self.measure_line.remove()
+            except ValueError:
+                pass
             self.measure_line = None
-        if self.measure_annotation is not None:
-            self.measure_annotation.remove()
+        if hasattr(self, 'measure_annotation') and self.measure_annotation is not None:
+            try:
+                self.measure_annotation.remove()
+            except ValueError:
+                pass
             self.measure_annotation = None
-        if self.measure_start_marker is not None:
-            self.measure_start_marker.remove()
+        if hasattr(self, 'measure_start_marker') and self.measure_start_marker is not None:
+            try:
+                self.measure_start_marker.remove()
+            except ValueError:
+                pass
             self.measure_start_marker = None
-        if self.measure_end_marker is not None:
-            self.measure_end_marker.remove()
+        if hasattr(self, 'measure_end_marker') and self.measure_end_marker is not None:
+            try:
+                self.measure_end_marker.remove()
+            except ValueError:
+                pass
             self.measure_end_marker = None
-        if self.measure_start_crosshair_h is not None:
-            self.measure_start_crosshair_h.remove()
+        if hasattr(self, 'measure_start_crosshair_h') and self.measure_start_crosshair_h is not None:
+            try:
+                self.measure_start_crosshair_h.remove()
+            except ValueError:
+                pass
             self.measure_start_crosshair_h = None
-        if self.measure_start_crosshair_v is not None:
-            self.measure_start_crosshair_v.remove()
+        if hasattr(self, 'measure_start_crosshair_v') and self.measure_start_crosshair_v is not None:
+            try:
+                self.measure_start_crosshair_v.remove()
+            except ValueError:
+                pass
             self.measure_start_crosshair_v = None
-        if self.measure_end_crosshair_h is not None:
-            self.measure_end_crosshair_h.remove()
+        if hasattr(self, 'measure_end_crosshair_h') and self.measure_end_crosshair_h is not None:
+            try:
+                self.measure_end_crosshair_h.remove()
+            except ValueError:
+                pass
             self.measure_end_crosshair_h = None
-        if self.measure_end_crosshair_v is not None:
-            self.measure_end_crosshair_v.remove()
+        if hasattr(self, 'measure_end_crosshair_v') and self.measure_end_crosshair_v is not None:
+            try:
+                self.measure_end_crosshair_v.remove()
+            except ValueError:
+                pass
             self.measure_end_crosshair_v = None
-        
         self.measure_start_point = None
         self.measure_end_point = None
         self.canvas.draw_idle()
@@ -2064,9 +2483,17 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
     def draw_measure_preview(self, event):
         """Draw a preview line while moving mouse before second click."""
         if self.measure_line is not None:
-            self.measure_line.remove()
+            try:
+                self.measure_line.remove()
+            except ValueError:
+                pass
+            self.measure_line = None
         if self.measure_annotation is not None:
-            self.measure_annotation.remove()
+            try:
+                self.measure_annotation.remove()
+            except ValueError:
+                pass
+            self.measure_annotation = None
         
         x_start, y_start, axis_start = self.measure_start_point
         x_end, y_end = event.xdata, event.ydata
@@ -2181,20 +2608,23 @@ class InteractivePlotWindowMultiAxis(QMainWindow):
         # Reset for next measurement
         self.measure_start_point = None
         self.measure_end_point = None
+        
 
 
 if __name__ == "__main__":
     import pandas as pd
     from InteractivePlotWindowMultiAxis import InteractivePlotWindowMultiAxis
-
+    level = np.random.randint(100, size=(100))
+    volume = level.cumsum()
     # Create sample data
     df = pd.DataFrame({
         'Inflow [m3/h]': np.random.randn(100).cumsum(),
-        'Outflow [m3/h]': np.random.randn(100).cumsum(),
-        'Level [m]': np.random.randn(100).cumsum() + 10,
+        'Inflow [m3]': np.random.randn(100).cumsum(),
+        'Level [m]': level,
+        'Volume [m*m2]': volume,        
         'Temperature [°C]': np.random.randn(100).cumsum() + 20,
         'Pressure [kPa]': np.random.randn(100).cumsum() + 100
-        }, index=pd.date_range('2025-01-01', periods=100, freq='H'))
+        }, index=pd.date_range('2025-01-01', periods=100, freq='h'))
     app = QApplication(sys.argv)
     mainWin = QMainWindow()
 
